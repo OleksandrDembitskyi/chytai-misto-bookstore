@@ -136,8 +136,8 @@ app.get('/api/authors', async (req, res) => {
       birth_year: a.birth_year,
       country: a.country
     })));
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -145,15 +145,15 @@ app.get('/api/authors/:id', async (req, res) => {
   try {
     const author = await db.collection('authors').findOne({ _id: new ObjectId(req.params.id) });
     if (!author) return res.json({ error: 'Автора не знайдено' });
-    res.json({ 
-      author_id: author._id.toString(), 
+    res.json({
+      author_id: author._id.toString(),
       name: author.name,
       biography: author.biography,
       birth_year: author.birth_year,
       country: author.country
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -170,8 +170,8 @@ app.get('/api/publishers', async (req, res) => {
       website: p.website,
       city: p.city
     })));
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -179,15 +179,15 @@ app.get('/api/publishers/:id', async (req, res) => {
   try {
     const publisher = await db.collection('publishers').findOne({ _id: new ObjectId(req.params.id) });
     if (!publisher) return res.json({ error: 'Видавництво не знайдено' });
-    res.json({ 
+    res.json({
       publisher_id: publisher._id.toString(),
       name: publisher.name,
       contact: publisher.contact,
       website: publisher.website,
       city: publisher.city
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -202,8 +202,8 @@ app.get('/api/categories', async (req, res) => {
       name: c.name,
       description: c.description
     })));
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -216,8 +216,8 @@ app.get('/api/categories/:id', async (req, res) => {
       name: category.name,
       description: category.description
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -227,8 +227,8 @@ app.get('/api/categories/:id', async (req, res) => {
 app.get('/api/customers', async (req, res) => {
   try {
     const customers = await db.collection('customers').find().toArray();
-    res.json(customers.map(c => ({ 
-      customer_id: c._id.toString(), 
+    res.json(customers.map(c => ({
+      customer_id: c._id.toString(),
       full_name: c.full_name,
       email: c.email,
       phone: c.phone,
@@ -236,8 +236,8 @@ app.get('/api/customers', async (req, res) => {
       registration_date: c.registration_date,
       total_orders: c.total_orders
     })));
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -245,7 +245,7 @@ app.get('/api/customers/:id', async (req, res) => {
   try {
     const customer = await db.collection('customers').findOne({ _id: new ObjectId(req.params.id) });
     if (!customer) return res.json({ error: 'Клієнта не знайдено' });
-    res.json({ 
+    res.json({
       customer_id: customer._id.toString(),
       full_name: customer.full_name,
       email: customer.email,
@@ -254,8 +254,8 @@ app.get('/api/customers/:id', async (req, res) => {
       registration_date: customer.registration_date,
       total_orders: customer.total_orders
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -281,8 +281,8 @@ app.get('/api/books', async (req, res) => {
     }));
 
     res.json(result);
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -315,8 +315,8 @@ app.get('/api/books/search/:query', async (req, res) => {
         stock: b.stock
       }))
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -362,8 +362,8 @@ app.get('/api/books/:id', async (req, res) => {
         name: c.name
       }))
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -373,13 +373,13 @@ app.get('/api/books/:id', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
   try {
     const orders = await db.collection('orders').find().toArray();
-    res.json(orders.map(o => ({ 
-      order_id: o._id.toString(), 
+    res.json(orders.map(o => ({
+      order_id: o._id.toString(),
       ...o,
       _id: undefined
     })));
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -387,13 +387,13 @@ app.get('/api/orders/:id', async (req, res) => {
   try {
     const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
     if (!order) return res.json({ error: 'Замовлення не знайдено' });
-    res.json({ 
-      order_id: order._id.toString(), 
+    res.json({
+      order_id: order._id.toString(),
       ...order,
       _id: undefined
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -433,8 +433,8 @@ app.post('/api/orders', async (req, res) => {
       message: 'Замовлення створено',
       order: { ...newOrder, order_id: result.insertedId.toString() }
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -445,8 +445,8 @@ app.get('/api/reviews', async (req, res) => {
   try {
     const reviews = await db.collection('reviews').find().toArray();
     res.json(reviews);
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -475,8 +475,8 @@ app.get('/api/reviews/book/:bookId', async (req, res) => {
       total_reviews: enriched.length,
       reviews: enriched
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -487,8 +487,8 @@ app.get('/api/inventory', async (req, res) => {
   try {
     const inventory = await db.collection('inventory').find().toArray();
     res.json(inventory);
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -515,8 +515,37 @@ app.get('/api/stats', async (req, res) => {
       total_revenue: totalRevenue,
       inventory_operations: 12
     });
-  } catch (err) { 
-    res.status(500).json({ error: err.message }); 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// 10. ФОРМА КОНТАКТІВ
+// ============================================
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    if (!name || !message) return res.status(400).json({ error: 'Заповніть усі поля' });
+
+    await transporter.sendMail({
+      from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL,
+      subject: `✉️ Нове повідомлення від ${name}`,
+      text: `
+Нове повідомлення з форми зворотного зв'язку!
+
+Ім'я: ${name}
+Email: ${email || 'не вказано'}
+
+Повідомлення:
+${message}
+      `.trim()
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -528,7 +557,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================
-// ГОЛОВНА СТОРІНКА
+// ГОЛОВНА СТОРІНКА (має бути ОСТАННІМ)
 // ============================================
 app.get('*', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');

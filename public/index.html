@@ -23,8 +23,6 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body { font-family: 'Montserrat', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column; }
-  
-  /* Основний контент тягнеться, щоб футер був внизу */
   main { flex: 1; }
 
   header { position: sticky; top: 0; z-index: 100; background: var(--ink); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; box-shadow: 0 2px 20px rgba(0,0,0,.35); }
@@ -195,7 +193,6 @@
   .contact-item { display: flex; gap: .75rem; margin-bottom: .9rem; align-items: flex-start; }
   .contact-icon { font-size: 1rem; flex-shrink: 0; margin-top: .1rem; }
   .contact-text { font-size: .85rem; line-height: 1.5; }
-  .map-placeholder { background: linear-gradient(135deg, var(--parchment), #d4c5a8); border-radius: 8px; height: 220px; display: flex; align-items: center; justify-content: center; font-size: .9rem; color: var(--muted); text-align: center; margin-top: 1rem; border: 2px dashed rgba(200,146,42,.3); }
 
   /* SUCCESS */
   .success-page { text-align: center; padding: 5rem 2rem; }
@@ -213,7 +210,6 @@
   .toast.success { border-left: 4px solid var(--sage); }
   .toast.error { border-left: 4px solid var(--rust); }
 
-  /* FOOTER - ВИПРАВЛЕНО: нормальне відображення в стовпчик */
   footer { background: var(--ink); color: rgba(245,240,232,.55); padding: 2.5rem 2rem 1.5rem; margin-top: 4rem; }
   .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: space-between; }
   .footer-brand .logo-text { font-size: 1.1rem; }
@@ -431,17 +427,17 @@
         <h3>✉️ Написати нам</h3>
         <div class="form-group" style="margin-bottom:1rem">
           <label class="form-label">Ваше ім'я</label>
-          <input type="text" class="form-input" placeholder="Ім'я та прізвище">
+          <input type="text" class="form-input" id="contactName" placeholder="Ім'я та прізвище">
         </div>
         <div class="form-group" style="margin-bottom:1rem">
           <label class="form-label">Email</label>
-          <input type="email" class="form-input" placeholder="email@example.com">
+          <input type="email" class="form-input" id="contactEmail" placeholder="email@example.com">
         </div>
         <div class="form-group" style="margin-bottom:1rem">
           <label class="form-label">Повідомлення</label>
-          <textarea class="form-input" rows="5" placeholder="Ваше запитання..." style="resize:vertical"></textarea>
+          <textarea class="form-input" id="contactMessage" rows="5" placeholder="Ваше запитання..." style="resize:vertical"></textarea>
         </div>
-        <button class="btn-primary" style="width:100%" onclick="showToast('Повідомлення надіслано! ✓','success')">Надіслати</button>
+        <button class="btn-primary" style="width:100%" onclick="sendContactForm()">Надіслати</button>
         <br><br>
         <h3 style="font-size:1rem;margin-bottom:.75rem">📦 Видавництва-партнери</h3>
         <div id="publishersList" style="font-size:.8rem;color:var(--muted)">Завантаження...</div>
@@ -500,9 +496,9 @@ const bookImages = {
   "699e2816829aaaf395b22651":  "images/Kobzar.jpg",
   "699e2816829aaaf395b22652":  "images/Musei.jpeg",
   "699e2816829aaaf395b22653":  "images/Moscoviada.webp",
-  "699e2816829aaaf395b22654":  "images/Internat.jpg",        
-  "699e2816829aaaf395b22655":  "images/Kazka.webp",  
-  "699e2816829aaaf395b22656":  "images/Buzok.jpg"     
+  "699e2816829aaaf395b22654":  "images/Internat.jpg",
+  "699e2816829aaaf395b22655":  "images/Kazka.webp",
+  "699e2816829aaaf395b22656":  "images/Buzok.jpg"
 };
 
 // ════════════════════════════════════════
@@ -929,7 +925,7 @@ async function placeOrder() {
   const delivery = document.getElementById('chkDelivery').value;
   if (!name||!phone||!address) { showToast('Заповніть усі поля!','error'); return; }
 
-  const result   = await apiPost('/orders', {
+  const result = await apiPost('/orders', {
     customer_id:'guest',
     items: cart.map(i=>({book_id:i.book_id,title:i.title,quantity:i.qty,price:i.price})),
     delivery_address:`${delivery}, ${address}`,
@@ -951,6 +947,25 @@ async function loadContacts() {
     document.getElementById('publishersList').innerHTML = publishers.map(p =>
       `<div style="margin-bottom:.5rem"><strong>${p.name}</strong> — ${p.city} · <span style="color:var(--gold)">${p.website}</span></div>`
     ).join('');
+  }
+}
+
+async function sendContactForm() {
+  const name    = document.getElementById('contactName').value.trim();
+  const email   = document.getElementById('contactEmail').value.trim();
+  const message = document.getElementById('contactMessage').value.trim();
+
+  if (!name || !message) { showToast('Заповніть імʼя та повідомлення!', 'error'); return; }
+
+  const result = await apiPost('/contact', { name, email, message });
+
+  if (result?.success) {
+    showToast('Повідомлення надіслано! ✓', 'success');
+    document.getElementById('contactName').value = '';
+    document.getElementById('contactEmail').value = '';
+    document.getElementById('contactMessage').value = '';
+  } else {
+    showToast('Помилка відправки. Спробуйте ще раз.', 'error');
   }
 }
 
