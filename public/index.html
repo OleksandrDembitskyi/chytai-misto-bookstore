@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Читай-місто — Книгарня</title>
-<!-- FAVICON: замінюй href на свій файл, наприклад: href="images/favicon.ico" -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -22,7 +21,10 @@
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
-  body { font-family: 'Montserrat', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+  body { font-family: 'Montserrat', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column; }
+  
+  /* Основний контент тягнеться, щоб футер був внизу */
+  main { flex: 1; }
 
   header { position: sticky; top: 0; z-index: 100; background: var(--ink); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; box-shadow: 0 2px 20px rgba(0,0,0,.35); }
   .logo { display: flex; align-items: center; gap: .7rem; text-decoration: none; cursor: pointer; }
@@ -210,10 +212,12 @@
   .toast.success { border-left: 4px solid var(--sage); }
   .toast.error { border-left: 4px solid var(--rust); }
 
+  /* FOOTER - ВИПРАВЛЕНО: нормальне відображення в стовпчик */
   footer { background: var(--ink); color: rgba(245,240,232,.55); padding: 2.5rem 2rem 1.5rem; margin-top: 4rem; }
   .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: space-between; }
   .footer-brand .logo-text { font-size: 1.1rem; }
   .footer-brand p { font-size: .78rem; margin-top: .5rem; line-height: 1.6; max-width: 200px; }
+  .footer-links { display: flex; flex-direction: column; }
   .footer-links h4 { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-light); margin-bottom: .75rem; }
   .footer-links a { display: block; font-size: .78rem; color: rgba(245,240,232,.5); text-decoration: none; margin-bottom: .35rem; cursor: pointer; }
   .footer-links a:hover { color: var(--gold-light); }
@@ -237,8 +241,8 @@
     <span class="logo-text">Читай-місто</span>
   </div>
   <nav>
-    <button class="active" data-page="home"     onclick="showPage('home')"><span>Головна</span></button>
-    <button data-page="catalog"  onclick="showPage('catalog')"><span>Каталог</span></button>
+    <button class="active" data-page="home" onclick="showPage('home')"><span>Головна</span></button>
+    <button data-page="catalog" onclick="showPage('catalog')"><span>Каталог</span></button>
     <button data-page="contacts" onclick="showPage('contacts')"><span>Контакти</span></button>
   </nav>
   <button class="cart-btn" onclick="showPage('cart')">
@@ -460,13 +464,18 @@
     </div>
     <div class="footer-links">
       <h4>Інформація</h4>
-      <a>Умови доставки</a><a>Повернення товару</a><a>Публічна оферта</a><a>Конфіденційність</a>
+      <a>Умови доставки</a>
+      <a>Повернення товару</a>
+      <a>Публічна оферта</a>
+      <a>Конфіденційність</a>
     </div>
     <div class="footer-links">
       <h4>Контакти</h4>
-      <a>+38 (032) 123-45-67</a>
-      <a><span class="__cf_email__" data-cfemail="51383f373e113239282530387c3c3822253e7f2430">[email&#160;protected]</span></a>
-      <a>вул. Книжкова, 7, Львів</a>
+      <a>📞 +38 (032) 123-45-67</a>
+      <a>📞 +38 (067) 987-65-43</a>
+      <a>✉️ info@chytai-misto.ua</a>
+      <a>✉️ orders@chytai-misto.ua</a>
+      <a>📍 вул. Книжкова, 7, Львів</a>
     </div>
   </div>
   <div class="footer-bottom">© 2026 Читай-місто. Усі права захищені. | Курсова робота — Дембіцький О.Ю., ПП-32</div>
@@ -474,7 +483,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 const API = 'http://localhost:3000/api';
 let cart = JSON.parse(localStorage.getItem('readcity_cart') || '[]');
 let allBooks = [];
@@ -482,7 +491,7 @@ let allCategories = [];
 let selectedPayment = 'card';
 
 // ════════════════════════════════════════
-//  ФОТО КНИГ — змінюй назви файлів на свої
+//  ФОТО КНИГ
 // ════════════════════════════════════════
 const bookImages = {
   "699e2816829aaaf395b2264f":  "images/Marusa.jpg",
@@ -579,7 +588,6 @@ async function loadHome() {
 
   const books = await apiFetch('/books');
   const baseBooks = books || [];
-  // Завантажуємо детальні дані для всіх книг щоб мати повні категорії для фільтру
   const detailedBooks = await Promise.all(
     baseBooks.map(b => apiFetch('/books/' + b.book_id))
   );
@@ -628,9 +636,6 @@ function bookCoverHTML(book, size) {
     </div>`;
 }
 
-// ════════════════════════════════════════
-//  ВИПРАВЛЕНО: отримання імені автора
-// ════════════════════════════════════════
 function getAuthorName(book) {
   if (!book.author) return '';
   if (typeof book.author === 'string') return book.author;
@@ -648,7 +653,6 @@ function bookCardHTML(book) {
   const stock = book.stock || 0;
   const { label, cls } = getStockInfo(stock);
   const author = getAuthorName(book);
-  // безпечне екранування для onclick атрибутів
   const safeTitle  = (book.title  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const safeAuthor = (author      || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
@@ -785,9 +789,6 @@ function renderCatalog(books) {
   renderBooksGrid('catalogGrid', books);
 }
 
-// ════════════════════════════════════════
-//  ВИПРАВЛЕНО: пошук без "undefined"
-// ════════════════════════════════════════
 async function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) { renderCatalog(allBooks); return; }
@@ -796,13 +797,11 @@ async function doSearch() {
   let results;
 
   if (data && data.results && data.results.length > 0) {
-    // Збагачуємо скорочені результати повними даними з allBooks
     results = data.results.map(r => {
       const full = allBooks.find(b => b.book_id === r.book_id);
       return full || r;
     });
   } else {
-    // Локальний пошук по повних даних
     const lq = q.toLowerCase();
     results = allBooks.filter(b => {
       const title  = (b.title || '').toLowerCase();
@@ -817,10 +816,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('searchInput') === document.activeElement) doSearch();
 });
 
-// ════════════════════════════════════════
-//  ВИПРАВЛЕНО: фільтр категорій працює
-//  для обох форматів даних з API
-// ════════════════════════════════════════
 function applyFilters() {
   const checkedCats = [...document.querySelectorAll('.catCheck:checked')].map(c => c.value);
   const minP = parseFloat(document.getElementById('priceMin').value) || 0;
@@ -830,12 +825,10 @@ function applyFilters() {
 
   if (checkedCats.length) {
     filtered = filtered.filter(b => {
-      // Варіант А: книга має масив categories з category_id (детальний ендпоінт)
       if (b.categories && b.categories.length > 0) {
         const ids = b.categories.map(c => c.category_id);
         return checkedCats.some(id => ids.includes(id));
       }
-      // Варіант Б: книга має рядок category (список /api/books)
       const catStr = (b.category || '').toLowerCase();
       return checkedCats.some(id => {
         const found = allCategories.find(c => c.category_id === id);
