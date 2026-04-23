@@ -4,6 +4,8 @@
 // Виконав: Дембіцький О.Ю., група ПП-32
 // ============================================
 
+require('dotenv').config();
+
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const dns = require('dns');
@@ -12,7 +14,7 @@ const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
@@ -26,8 +28,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Підключення до MongoDB Atlas
-const uri = 'mongodb+srv://677sasha776_db_user:daIuhektpTyn9jEr@bookstore-cluster.lpyvqmy.mongodb.net/';
+// Підключення до MongoDB Atlas (пароль з .env)
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  console.error('❌ Помилка: MONGODB_URI не знайдено в .env файлі!');
+  process.exit(1);
+}
+
 const client = new MongoClient(uri);
 let db;
 
