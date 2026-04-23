@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Читай-місто — Книгарня</title>
+<!-- FAVICON: замінюй href на свій файл, наприклад: href="images/favicon.ico" -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1008;
+    --cream: #f5f0e8;
+    --parchment: #ede5d0;
+    --gold: #c8922a;
+    --gold-light: #e8b84b;
+    --rust: #8b3a1e;
+    --sage: #4a6741;
+    --muted: #7a6e5f;
+    --card-bg: #fffdf8;
+    --shadow: rgba(26,16,8,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Montserrat', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; overflow-x: hidden; }
+
+  header { position: sticky; top: 0; z-index: 100; background: var(--ink); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; box-shadow: 0 2px 20px rgba(0,0,0,.35); }
+  .logo { display: flex; align-items: center; gap: .7rem; text-decoration: none; cursor: pointer; }
+  .logo-icon { font-size: 1.5rem; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--gold-light); letter-spacing: .03em; }
+  nav { display: flex; gap: .25rem; }
+  nav button { background: none; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .78rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: rgba(245,240,232,.7); padding: .45rem .85rem; border-radius: 4px; transition: color .2s, background .2s; }
+  nav button:hover, nav button.active { color: var(--gold-light); background: rgba(200,146,42,.12); }
+  .cart-btn { background: var(--gold); border: none; cursor: pointer; color: var(--ink); font-weight: 700; font-size: .8rem; padding: .45rem 1.1rem; border-radius: 22px; display: flex; align-items: center; gap: .4rem; transition: background .2s, transform .15s; font-family: 'Montserrat', sans-serif; }
+  .cart-btn:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .cart-count { background: var(--rust); color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: .65rem; display: flex; align-items: center; justify-content: center; }
+
+  .page { display: none; animation: fadeIn .35s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* HERO */
+  .hero { background: linear-gradient(135deg, var(--ink) 0%, #2d1f0e 60%, #3d2a0f 100%); min-height: 520px; display: flex; align-items: center; padding: 4rem 2rem; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8922a' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+  .hero-inner { max-width: 1100px; margin: 0 auto; width: 100%; position: relative; }
+  .hero-badge { display: inline-block; background: rgba(200,146,42,.2); border: 1px solid rgba(200,146,42,.4); color: var(--gold-light); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; padding: .3rem .9rem; border-radius: 20px; margin-bottom: 1.4rem; }
+  .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.6rem, 5vw, 4.2rem); font-weight: 900; color: var(--cream); line-height: 1.1; margin-bottom: 1.2rem; max-width: 640px; }
+  .hero h1 em { color: var(--gold-light); font-style: normal; }
+  .hero p { color: rgba(245,240,232,.65); font-size: 1rem; font-weight: 300; max-width: 480px; line-height: 1.7; margin-bottom: 2.2rem; }
+  .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .btn-primary { background: var(--gold); color: var(--ink); border: none; cursor: pointer; font-weight: 700; font-family: 'Montserrat', sans-serif; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; padding: .85rem 2rem; border-radius: 4px; transition: background .2s, transform .15s, box-shadow .2s; }
+  .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(200,146,42,.3); }
+  .btn-outline { background: transparent; color: var(--cream); border: 1px solid rgba(245,240,232,.35); cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 500; padding: .85rem 2rem; border-radius: 4px; transition: border-color .2s, background .2s; }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold-light); background: rgba(200,146,42,.06); }
+  .hero-stats { display: flex; gap: 2.5rem; margin-top: 3rem; flex-wrap: wrap; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--gold-light); }
+  .stat-label { font-size: .7rem; color: rgba(245,240,232,.5); letter-spacing: .08em; text-transform: uppercase; }
+
+  .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: .5rem; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.9rem; font-weight: 700; }
+  .section-title span { color: var(--gold); }
+  .see-all { background: none; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .78rem; color: var(--gold); text-decoration: underline; font-weight: 500; }
+  .see-all:hover { color: var(--rust); }
+
+  .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; }
+  .book-card { background: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 12px var(--shadow); overflow: hidden; transition: transform .25s, box-shadow .25s; cursor: pointer; display: flex; flex-direction: column; }
+  .book-card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px var(--shadow); }
+  .book-cover { width: 100%; aspect-ratio: 2/3; background: linear-gradient(135deg, var(--parchment) 0%, #d4c9b0 100%); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .book-cover-img { width: 100%; height: 100%; object-fit: cover; }
+  .book-cover-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 1rem; text-align: center; }
+  .book-cover-placeholder .book-emoji { font-size: 2.5rem; margin-bottom: .5rem; opacity: .5; }
+  .book-cover-placeholder .placeholder-title { font-family: 'Playfair Display', serif; font-size: .75rem; color: var(--muted); font-weight: 700; line-height: 1.3; }
+  .book-cover-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--gold); opacity: .6; }
+  .book-info { padding: 1rem; flex: 1; display: flex; flex-direction: column; }
+  .book-title { font-family: 'Playfair Display', serif; font-size: .9rem; font-weight: 700; margin-bottom: .25rem; line-height: 1.3; }
+  .book-author { font-size: .72rem; color: var(--muted); margin-bottom: .5rem; }
+  .book-meta { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+  .book-price { font-weight: 700; color: var(--rust); font-size: .95rem; }
+  .book-stock { font-size: .65rem; color: var(--sage); font-weight: 600; }
+  .book-stock.low { color: var(--rust); }
+  .add-to-cart-btn { width: 100%; margin-top: .75rem; background: var(--ink); color: var(--cream); border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: .6rem; border-radius: 4px; transition: background .2s; }
+  .add-to-cart-btn:hover { background: var(--gold); color: var(--ink); }
+
+  .categories-strip { padding: 2.5rem 2rem; background: var(--parchment); border-top: 1px solid rgba(200,146,42,.2); border-bottom: 1px solid rgba(200,146,42,.2); }
+  .cats-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .cat-chip { background: var(--card-bg); border: 1.5px solid var(--parchment); border-radius: 24px; padding: .45rem 1.1rem; font-size: .75rem; font-weight: 600; color: var(--ink); cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+  .cat-chip:hover { border-color: var(--gold); background: var(--gold); color: var(--ink); }
+
+  /* CATALOG */
+  .catalog-layout { display: flex; gap: 2rem; padding: 2rem; max-width: 1200px; margin: 0 auto; }
+  .sidebar { width: 240px; flex-shrink: 0; background: var(--card-bg); border-radius: 8px; padding: 1.5rem; height: fit-content; box-shadow: 0 2px 12px var(--shadow); position: sticky; top: 80px; }
+  .sidebar h3 { font-family: 'Playfair Display', serif; font-size: 1rem; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--parchment); }
+  .filter-group { margin-bottom: 1.5rem; }
+  .filter-label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .7rem; display: block; }
+  .filter-option { display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem; cursor: pointer; }
+  .filter-option input { accent-color: var(--gold); }
+  .filter-option span { font-size: .8rem; }
+  .price-inputs { display: flex; gap: .5rem; }
+  .price-input { width: 100%; padding: .4rem .6rem; border: 1px solid var(--parchment); border-radius: 4px; font-size: .8rem; font-family: 'Montserrat', sans-serif; background: var(--cream); }
+  .price-input:focus { outline: none; border-color: var(--gold); }
+  .sidebar .btn-primary { width: 100%; font-size: .75rem; padding: .65rem; }
+  .catalog-main { flex: 1; }
+  .catalog-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+  .search-bar { display: flex; gap: .5rem; align-items: center; background: var(--card-bg); border: 1px solid var(--parchment); border-radius: 24px; padding: .4rem .4rem .4rem 1rem; flex: 1; max-width: 360px; box-shadow: 0 1px 6px var(--shadow); }
+  .search-input { border: none; background: transparent; font-family: 'Montserrat', sans-serif; font-size: .85rem; flex: 1; color: var(--ink); }
+  .search-input:focus { outline: none; }
+  .search-btn { background: var(--gold); border: none; cursor: pointer; border-radius: 18px; padding: .35rem .9rem; font-size: .75rem; font-weight: 600; font-family: 'Montserrat', sans-serif; transition: background .2s; }
+  .search-btn:hover { background: var(--gold-light); }
+  .results-count { font-size: .8rem; color: var(--muted); }
+  .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 1.25rem; }
+
+  /* BOOK DETAIL */
+  .book-detail { max-width: 900px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .back-btn { background: none; border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .4rem; margin-bottom: 2rem; transition: color .2s; }
+  .back-btn:hover { color: var(--gold); }
+  .detail-layout { display: flex; gap: 3rem; flex-wrap: wrap; }
+  .detail-cover { width: 240px; flex-shrink: 0; aspect-ratio: 2/3; background: linear-gradient(135deg, var(--parchment) 0%, #c8b99a 100%); border-radius: 8px; box-shadow: 6px 6px 20px var(--shadow), -2px -2px 8px rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .detail-cover img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .detail-cover-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 8px; background: linear-gradient(to bottom, var(--gold), var(--rust)); border-radius: 8px 0 0 8px; }
+  .detail-cover-placeholder { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding: 1.5rem; text-align: center; }
+  .detail-info { flex: 1; min-width: 280px; }
+  .detail-categories { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .detail-cat-tag { background: rgba(200,146,42,.15); color: var(--rust); border-radius: 12px; padding: .2rem .7rem; font-size: .68rem; font-weight: 600; }
+  .detail-title { font-family: 'Playfair Display', serif; font-size: 2.1rem; font-weight: 900; line-height: 1.15; margin-bottom: .5rem; }
+  .detail-author { font-size: .9rem; color: var(--muted); margin-bottom: 1.5rem; }
+  .detail-author span { color: var(--gold); font-weight: 600; }
+  .detail-price-row { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .detail-price { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--rust); }
+  .detail-stock { font-size: .78rem; color: var(--sage); font-weight: 600; }
+  .detail-stock.low { color: var(--rust); }
+  .qty-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .qty-ctrl { display: flex; align-items: center; border: 1.5px solid var(--parchment); border-radius: 6px; overflow: hidden; }
+  .qty-btn { background: var(--parchment); border: none; cursor: pointer; width: 34px; height: 34px; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+  .qty-btn:hover { background: var(--gold-light); }
+  .qty-num { width: 44px; text-align: center; font-size: .9rem; font-weight: 600; border: none; background: white; font-family: 'Montserrat', sans-serif; }
+  .detail-add-btn { background: var(--ink); color: var(--cream); border: none; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: .82rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: .85rem 2.5rem; border-radius: 4px; transition: background .2s, transform .15s; }
+  .detail-add-btn:hover { background: var(--gold); color: var(--ink); transform: translateY(-2px); }
+  .detail-divider { border: none; border-top: 1px solid var(--parchment); margin: 1.5rem 0; }
+  .detail-specs { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+  .spec-row { display: flex; flex-direction: column; }
+  .spec-key { font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .spec-val { font-size: .85rem; font-weight: 600; margin-top: .1rem; }
+  .detail-desc { margin-top: 1.5rem; font-size: .9rem; line-height: 1.8; color: #3d3020; }
+
+  .reviews-section { margin-top: 3rem; }
+  .reviews-section h3 { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 1.5rem; }
+  .review-card { background: var(--card-bg); border-radius: 8px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 8px var(--shadow); }
+  .review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+  .review-name { font-weight: 700; font-size: .85rem; }
+  .review-date { font-size: .7rem; color: var(--muted); }
+  .stars { color: var(--gold); font-size: .9rem; }
+  .review-text { font-size: .85rem; line-height: 1.6; margin-top: .5rem; }
+
+  /* CART */
+  .cart-page { max-width: 800px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .cart-page h2 { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 2rem; }
+  .cart-empty { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .cart-empty .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+  .cart-item { display: flex; gap: 1.2rem; align-items: center; background: var(--card-bg); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; box-shadow: 0 1px 8px var(--shadow); }
+  .cart-item-cover { width: 55px; height: 80px; border-radius: 4px; background: var(--parchment); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; overflow: hidden; }
+  .cart-item-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .cart-item-info { flex: 1; }
+  .cart-item-title { font-family: 'Playfair Display', serif; font-size: .9rem; font-weight: 700; }
+  .cart-item-author { font-size: .75rem; color: var(--muted); }
+  .cart-item-price { font-weight: 700; color: var(--rust); font-size: .95rem; }
+  .cart-item-actions { display: flex; align-items: center; gap: 1rem; }
+  .remove-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; transition: color .2s; }
+  .remove-btn:hover { color: var(--rust); }
+  .cart-summary { background: var(--card-bg); border-radius: 8px; padding: 1.5rem; box-shadow: 0 2px 12px var(--shadow); margin-top: 1.5rem; }
+  .summary-row { display: flex; justify-content: space-between; margin-bottom: .7rem; font-size: .85rem; }
+  .summary-total { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 900; }
+  .summary-divider { border: none; border-top: 1px solid var(--parchment); margin: 1rem 0; }
+  .checkout-form { margin-top: 2rem; }
+  .form-section-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 1rem; padding-bottom: .4rem; border-bottom: 1px solid var(--parchment); }
+  .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .form-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
+  .form-label { font-size: .7rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: .35rem; }
+  .form-input, .form-select { border: 1.5px solid var(--parchment); border-radius: 6px; padding: .6rem .85rem; font-size: .85rem; font-family: 'Montserrat', sans-serif; color: var(--ink); background: var(--cream); transition: border-color .2s; }
+  .form-input:focus, .form-select:focus { outline: none; border-color: var(--gold); }
+  .payment-opts { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .pay-opt { flex: 1; min-width: 140px; border: 2px solid var(--parchment); border-radius: 8px; padding: .9rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+  .pay-opt.selected { border-color: var(--gold); background: rgba(200,146,42,.08); }
+  .pay-opt-icon { font-size: 1.4rem; margin-bottom: .3rem; }
+  .pay-opt-label { font-size: .75rem; font-weight: 600; }
+
+  /* CONTACTS */
+  .contacts-page { max-width: 900px; margin: 0 auto; padding: 3rem 2rem; }
+  .contacts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; }
+  .contact-card { background: var(--card-bg); border-radius: 8px; padding: 2rem; box-shadow: 0 2px 12px var(--shadow); }
+  .contact-card h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 1.2rem; }
+  .contact-item { display: flex; gap: .75rem; margin-bottom: .9rem; align-items: flex-start; }
+  .contact-icon { font-size: 1rem; flex-shrink: 0; margin-top: .1rem; }
+  .contact-text { font-size: .85rem; line-height: 1.5; }
+  .map-placeholder { background: linear-gradient(135deg, var(--parchment), #d4c5a8); border-radius: 8px; height: 220px; display: flex; align-items: center; justify-content: center; font-size: .9rem; color: var(--muted); text-align: center; margin-top: 1rem; border: 2px dashed rgba(200,146,42,.3); }
+
+  /* SUCCESS */
+  .success-page { text-align: center; padding: 5rem 2rem; }
+  .success-icon { font-size: 4rem; margin-bottom: 1.5rem; }
+  .success-page h2 { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 1rem; }
+  .success-page p { color: var(--muted); margin-bottom: 2rem; }
+  .order-num { display: inline-block; background: rgba(200,146,42,.15); border: 1px solid var(--gold); border-radius: 6px; padding: .5rem 1.5rem; font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--rust); margin-bottom: 2rem; }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--muted); }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--parchment); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; margin-right: .8rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--ink); color: var(--cream); padding: .9rem 1.5rem; border-radius: 6px; font-size: .82rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.25); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; display: flex; align-items: center; gap: .6rem; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-left: 4px solid var(--sage); }
+  .toast.error { border-left: 4px solid var(--rust); }
+
+  footer { background: var(--ink); color: rgba(245,240,232,.55); padding: 2.5rem 2rem 1.5rem; margin-top: 4rem; }
+  .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; gap: 2rem; flex-wrap: wrap; justify-content: space-between; }
+  .footer-brand .logo-text { font-size: 1.1rem; }
+  .footer-brand p { font-size: .78rem; margin-top: .5rem; line-height: 1.6; max-width: 200px; }
+  .footer-links h4 { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-light); margin-bottom: .75rem; }
+  .footer-links a { display: block; font-size: .78rem; color: rgba(245,240,232,.5); text-decoration: none; margin-bottom: .35rem; cursor: pointer; }
+  .footer-links a:hover { color: var(--gold-light); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,.08); margin-top: 2rem; padding-top: 1rem; text-align: center; font-size: .72rem; }
+
+  @media (max-width: 680px) {
+    .catalog-layout { flex-direction: column; }
+    .sidebar { width: 100%; position: static; }
+    .detail-layout { flex-direction: column; }
+    .detail-cover { width: 100%; max-width: 220px; }
+    .contacts-grid { grid-template-columns: 1fr; }
+    nav button span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="showPage('home')">
+    <span class="logo-icon">📚</span>
+    <span class="logo-text">Читай-місто</span>
+  </div>
+  <nav>
+    <button class="active" data-page="home"     onclick="showPage('home')"><span>Головна</span></button>
+    <button data-page="catalog"  onclick="showPage('catalog')"><span>Каталог</span></button>
+    <button data-page="contacts" onclick="showPage('contacts')"><span>Контакти</span></button>
+  </nav>
+  <button class="cart-btn" onclick="showPage('cart')">
+    🛒 Кошик <span class="cart-count" id="cartCount">0</span>
+  </button>
+</header>
+
+<!-- HOME -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">📖 Книгарня онлайн</div>
+      <h1>Знайди <em>свою</em> наступну улюблену книгу</h1>
+      <p>Обирай з найкращих творів української літератури. Доставка Новою Поштою та Укрпоштою по всій Україні.</p>
+      <div class="hero-btns">
+        <button class="btn-primary" onclick="showPage('catalog')">Перейти до каталогу</button>
+        <button class="btn-outline" onclick="scrollToSection('featured')">Рекомендовані</button>
+      </div>
+      <div class="hero-stats" id="heroStats">
+        <div class="stat"><div class="stat-num">5</div><div class="stat-label">Книг</div></div>
+        <div class="stat"><div class="stat-num">5</div><div class="stat-label">Авторів</div></div>
+        <div class="stat"><div class="stat-num">10</div><div class="stat-label">Категорій</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="categories-strip">
+    <div style="max-width:1100px;margin:0 auto">
+      <div class="section-title" style="font-size:1.1rem;margin-bottom:1rem">Категорії</div>
+      <div class="cats-row" id="homeCats"><div class="loading"><div class="spinner"></div> Завантаження...</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="featured">
+    <div class="section-header">
+      <div class="section-title">Усі <span>книги</span></div>
+      <button class="see-all" onclick="showPage('catalog')">Дивитися всі →</button>
+    </div>
+    <div class="books-grid" id="homeBooks">
+      <div class="loading"><div class="spinner"></div> Завантаження...</div>
+    </div>
+  </div>
+
+  <div style="background:var(--parchment);border-top:1px solid rgba(200,146,42,.2)">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Наші <span>автори</span></div>
+      </div>
+      <div id="homeAuthors" style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CATALOG -->
+<div id="page-catalog" class="page">
+  <div class="catalog-layout">
+    <aside class="sidebar">
+      <h3>🔍 Фільтри</h3>
+      <div class="filter-group">
+        <span class="filter-label">Категорія</span>
+        <div id="sidebarCats"></div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">Ціна (грн)</span>
+        <div class="price-inputs">
+          <input type="number" class="price-input" id="priceMin" placeholder="від" value="0">
+          <input type="number" class="price-input" id="priceMax" placeholder="до" value="9999">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="applyFilters()">Застосувати</button>
+      <br><br>
+      <button class="btn-outline" style="width:100%;font-size:.75rem;padding:.65rem" onclick="resetFilters()">Скинути фільтри</button>
+    </aside>
+    <div class="catalog-main">
+      <div class="catalog-topbar">
+        <div class="search-bar">
+          <input type="text" class="search-input" id="searchInput" placeholder="Пошук книг чи авторів...">
+          <button class="search-btn" onclick="doSearch()">Шукати</button>
+        </div>
+        <span class="results-count" id="resultsCount"></span>
+      </div>
+      <div class="catalog-grid" id="catalogGrid">
+        <div class="loading"><div class="spinner"></div> Завантаження...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOK DETAIL -->
+<div id="page-book" class="page">
+  <div class="book-detail" id="bookDetailContent">
+    <div class="loading"><div class="spinner"></div> Завантаження...</div>
+  </div>
+</div>
+
+<!-- CART -->
+<div id="page-cart" class="page">
+  <div class="cart-page">
+    <h2>🛒 Кошик</h2>
+    <div id="cartItems"></div>
+    <div id="cartCheckoutSection" style="display:none">
+      <div class="cart-summary" id="cartSummary"></div>
+      <div class="checkout-form">
+        <div class="form-section-title">📦 Дані доставки</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ім'я та прізвище</label>
+            <input type="text" class="form-input" id="chkName" placeholder="Іван Коваль">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Телефон</label>
+            <input type="tel" class="form-input" id="chkPhone" placeholder="+380...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="chkEmail" placeholder="email@example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Спосіб доставки</label>
+            <select class="form-select" id="chkDelivery">
+              <option>Нова Пошта</option>
+              <option>Укрпошта</option>
+              <option>Самовивіз</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Адреса / відділення</label>
+            <input type="text" class="form-input" id="chkAddress" placeholder="м. Львів, відділення №1">
+          </div>
+        </div>
+        <div class="form-section-title" style="margin-top:1.5rem">💳 Спосіб оплати</div>
+        <div class="payment-opts">
+          <div class="pay-opt selected" id="pay-card" onclick="selectPayment('card')">
+            <div class="pay-opt-icon">💳</div>
+            <div class="pay-opt-label">Картка онлайн</div>
+          </div>
+          <div class="pay-opt" id="pay-cash" onclick="selectPayment('cash')">
+            <div class="pay-opt-icon">💵</div>
+            <div class="pay-opt-label">Готівка при отриманні</div>
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%;padding:1rem;font-size:.9rem" onclick="placeOrder()">Оформити замовлення</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div id="page-success" class="page">
+  <div class="success-page">
+    <div class="success-icon">✅</div>
+    <h2>Замовлення прийнято!</h2>
+    <p>Дякуємо за покупку у книгарні «Читай-місто».</p>
+    <div class="order-num" id="successOrderNum">ORD-2026-001</div><br>
+    <p style="color:var(--muted);font-size:.85rem">Ми зв'яжемося з вами найближчим часом для підтвердження.</p>
+    <br><br>
+    <button class="btn-primary" onclick="showPage('home')">На головну</button>
+    &nbsp;
+    <button class="btn-outline" onclick="showPage('catalog')">Продовжити покупки</button>
+  </div>
+</div>
+
+<!-- CONTACTS -->
+<div id="page-contacts" class="page">
+  <div class="contacts-page">
+    <div class="section-title" style="font-size:2rem">Контакти <span style="color:var(--gold)">та адреса</span></div>
+    <div class="contacts-grid">
+      <div class="contact-card">
+        <h3>📍 Наша адреса</h3>
+        <div class="contact-item"><span class="contact-icon">🏛️</span><div class="contact-text">вул. Книжкова, 7, м. Львів, 79000<br>Магазин відкритий щодня</div></div>
+        <div class="contact-item"><span class="contact-icon">🕐</span><div class="contact-text">Пн–Пт: 09:00–20:00<br>Сб–Нд: 10:00–18:00</div></div>
+        <div class="contact-item"><span class="contact-icon">📞</span><div class="contact-text">+38 (032) 123-45-67<br>+38 (067) 987-65-43</div></div>
+        <div class="contact-item"><span class="contact-icon">✉️</span><div class="contact-text">info@chytai-misto.ua<br>orders@chytai-misto.ua</div></div>
+        <div style="margin-top:1rem;border-radius:8px;overflow:hidden;height:220px;">
+          <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d5558.978913509087!2d24.025045757226028!3d49.83744342725612!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x473add6d9be85555%3A0x14602edad4361142!2z0JrQvdC40LbQutC-0LLQuNC5INCb0LXQsg!5e0!3m2!1suk!2sus!4v1773094378804!5m2!1suk!2sus" width="100%" height="220" style="border:0;display:block;" allowfullscreen loading="lazy"></iframe>
+        </div>
+      </div>
+      <div class="contact-card">
+        <h3>✉️ Написати нам</h3>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label class="form-label">Ваше ім'я</label>
+          <input type="text" class="form-input" placeholder="Ім'я та прізвище">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" placeholder="email@example.com">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem">
+          <label class="form-label">Повідомлення</label>
+          <textarea class="form-input" rows="5" placeholder="Ваше запитання..." style="resize:vertical"></textarea>
+        </div>
+        <button class="btn-primary" style="width:100%" onclick="showToast('Повідомлення надіслано! ✓','success')">Надіслати</button>
+        <br><br>
+        <h3 style="font-size:1rem;margin-bottom:.75rem">📦 Видавництва-партнери</h3>
+        <div id="publishersList" style="font-size:.8rem;color:var(--muted)">Завантаження...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="logo-text">📚 Читай-місто</div>
+      <p>Онлайн-книгарня з найкращими творами української літератури</p>
+    </div>
+    <div class="footer-links">
+      <h4>Навігація</h4>
+      <a onclick="showPage('home')">Головна</a>
+      <a onclick="showPage('catalog')">Каталог</a>
+      <a onclick="showPage('cart')">Кошик</a>
+      <a onclick="showPage('contacts')">Контакти</a>
+    </div>
+    <div class="footer-links">
+      <h4>Інформація</h4>
+      <a>Умови доставки</a><a>Повернення товару</a><a>Публічна оферта</a><a>Конфіденційність</a>
+    </div>
+    <div class="footer-links">
+      <h4>Контакти</h4>
+      <a>+38 (032) 123-45-67</a>
+      <a><span class="__cf_email__" data-cfemail="51383f373e113239282530387c3c3822253e7f2430">[email&#160;protected]</span></a>
+      <a>вул. Книжкова, 7, Львів</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Читай-місто. Усі права захищені. | Розрахунково-графічна робота — Дембіцький О.Ю., ПП-32</div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+const API = 'http://localhost:3000/api';
+let cart = JSON.parse(localStorage.getItem('readcity_cart') || '[]');
+let allBooks = [];
+let allCategories = [];
+let selectedPayment = 'card';
+
+// ════════════════════════════════════════
+//  ФОТО КНИГ — змінюй назви файлів на свої
+// ════════════════════════════════════════
+const bookImages = {
+  "699e2816829aaaf395b2264f":  "images/Marusa.jpg",
+  "699e2816829aaaf395b22650":  "images/Voroshilov.webp",
+  "699e2816829aaaf395b22651":  "images/Kobzar.jpg",
+  "699e2816829aaaf395b22652":  "images/Musei.jpeg",
+  "699e2816829aaaf395b22653":  "images/Moscoviada.webp"
+};
+
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+async function apiFetch(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  } catch(e) { console.warn('API error:', e.message, path); return null; }
+}
+
+async function apiPost(path, data) {
+  try {
+    const r = await fetch(API + path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    return r.json();
+  } catch(e) { console.warn('POST error:', e.message); return null; }
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.innerHTML = (type==='success'?'✓ ':'✕ ') + msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function updateCartCount() {
+  document.getElementById('cartCount').textContent = cart.reduce((s,i) => s + i.qty, 0);
+}
+
+function saveCart() {
+  localStorage.setItem('readcity_cart', JSON.stringify(cart));
+  updateCartCount();
+}
+
+function addToCart(book, qty=1) {
+  const ex = cart.find(i => i.book_id === book.book_id);
+  if (ex) ex.qty += qty; else cart.push({...book, qty});
+  saveCart();
+  showToast(`"${book.title}" додано до кошика`);
+}
+
+function removeFromCart(bookId) {
+  cart = cart.filter(i => i.book_id !== bookId);
+  saveCart(); renderCart();
+}
+
+function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({behavior:'smooth'}); }
+
+// ════════════════════════════════════════
+//  ROUTING
+// ════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+  const pg = document.getElementById('page-' + name);
+  if (pg) { pg.classList.add('active'); window.scrollTo(0,0); }
+  if (name === 'catalog')  loadCatalog();
+  if (name === 'cart')     renderCart();
+  if (name === 'contacts') loadContacts();
+}
+
+// ════════════════════════════════════════
+//  HOME
+// ════════════════════════════════════════
+async function loadHome() {
+  const stats = await apiFetch('/stats');
+  if (stats) {
+    document.getElementById('heroStats').innerHTML = `
+      <div class="stat"><div class="stat-num">${stats.total_books}</div><div class="stat-label">Книг</div></div>
+      <div class="stat"><div class="stat-num">5</div><div class="stat-label">Авторів</div></div>
+      <div class="stat"><div class="stat-num">10</div><div class="stat-label">Категорій</div></div>
+    `;
+  }
+
+  const cats = await apiFetch('/categories');
+  allCategories = cats || [];
+  if (cats) {
+    document.getElementById('homeCats').innerHTML = cats.map(c =>
+      `<div class="cat-chip" onclick="filterByCat('${c.category_id}')">${c.name}</div>`
+    ).join('');
+    document.getElementById('sidebarCats').innerHTML = cats.map(c =>
+      `<label class="filter-option"><input type="checkbox" value="${c.category_id}" class="catCheck"> <span>${c.name}</span></label>`
+    ).join('');
+  }
+
+  const books = await apiFetch('/books');
+  const baseBooks = books || [];
+  // Завантажуємо детальні дані для всіх книг щоб мати повні категорії для фільтру
+  const detailedBooks = await Promise.all(
+    baseBooks.map(b => apiFetch('/books/' + b.book_id))
+  );
+  allBooks = detailedBooks.map((d, i) => d && !d.error ? d : baseBooks[i]);
+  renderBooksGrid('homeBooks', allBooks);
+
+  const authors = await apiFetch('/authors');
+  if (authors) {
+    document.getElementById('homeAuthors').innerHTML = authors.map(a => `
+      <div style="background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;flex:1;min-width:160px;max-width:200px;box-shadow:0 2px 12px var(--shadow)">
+        <div style="font-size:2rem;margin-bottom:.5rem">✍️</div>
+        <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:.95rem">${a.name}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.25rem">${a.birth_year} • ${a.country}</div>
+        <div style="font-size:.75rem;color:var(--ink);margin-top:.5rem;line-height:1.4">${a.biography.substring(0,60)}...</div>
+      </div>
+    `).join('');
+  }
+}
+
+// ════════════════════════════════════════
+//  ОБКЛАДИНКИ
+// ════════════════════════════════════════
+function bookCoverHTML(book, size) {
+  const imgUrl = bookImages[book.book_id] || '';
+  const colors = ['#8b6914','#5a3e1b','#2c4a2e','#4a2040','#1e3a4a'];
+  const bg = colors[(book.title||'').charCodeAt(0) % colors.length];
+
+  if (size === 'detail') return `
+    <div class="detail-cover" style="${imgUrl?'':'background:linear-gradient(160deg,'+bg+'ee,'+bg+'99)'}">
+      <div class="detail-cover-spine"></div>
+      ${imgUrl ? `<img src="${imgUrl}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;border-radius:8px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+      <div class="detail-cover-placeholder" style="${imgUrl?'display:none':''}">
+        <div style="font-size:3rem;margin-bottom:.5rem">📖</div>
+        <div style="font-family:'Playfair Display',serif;font-size:.85rem;color:rgba(255,255,255,.8);text-align:center">${book.title}</div>
+      </div>
+    </div>`;
+
+  return `
+    <div class="book-cover" style="${imgUrl?'':'background:linear-gradient(160deg,'+bg+'dd,'+bg+'88)'}">
+      <div class="book-cover-spine"></div>
+      ${imgUrl ? `<img class="book-cover-img" src="${imgUrl}" alt="${book.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
+      <div class="book-cover-placeholder" style="${imgUrl?'display:none':''}">
+        <div class="book-emoji">📖</div>
+        <div class="placeholder-title">${book.title}</div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════
+//  ВИПРАВЛЕНО: отримання імені автора
+// ════════════════════════════════════════
+function getAuthorName(book) {
+  if (!book.author) return '';
+  if (typeof book.author === 'string') return book.author;
+  if (typeof book.author === 'object' && book.author.name) return book.author.name;
+  return '';
+}
+
+function getStockInfo(stock) {
+  if (stock === 0) return { label:'Немає в наявності', cls:'low' };
+  if (stock <= 3)  return { label:`Лишилось ${stock} шт`, cls:'low' };
+  return { label:'В наявності', cls:'' };
+}
+
+function bookCardHTML(book) {
+  const stock = book.stock || 0;
+  const { label, cls } = getStockInfo(stock);
+  const author = getAuthorName(book);
+  // безпечне екранування для onclick атрибутів
+  const safeTitle  = (book.title  || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const safeAuthor = (author      || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+  return `
+    <div class="book-card" onclick="openBook('${book.book_id}')">
+      ${bookCoverHTML(book,'card')}
+      <div class="book-info">
+        <div class="book-title">${book.title}</div>
+        <div class="book-author">${author}</div>
+        <div class="book-meta">
+          <span class="book-price">${book.price} грн</span>
+          <span class="book-stock ${cls}">${label}</span>
+        </div>
+        ${stock > 0
+          ? `<button class="add-to-cart-btn" onclick="event.stopPropagation();addToCart({book_id:'${book.book_id}',title:'${safeTitle}',author:'${safeAuthor}',price:${book.price}},1)">До кошика</button>`
+          : `<button class="add-to-cart-btn" style="opacity:.4;cursor:not-allowed" disabled>Немає в наявності</button>`
+        }
+      </div>
+    </div>`;
+}
+
+function renderBooksGrid(containerId, books) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!books || !books.length) { el.innerHTML = '<p style="color:var(--muted);padding:2rem">Книг не знайдено</p>'; return; }
+  el.innerHTML = books.map(b => bookCardHTML(b)).join('');
+}
+
+// ════════════════════════════════════════
+//  BOOK DETAIL
+// ════════════════════════════════════════
+async function openBook(id) {
+  showPage('book');
+  document.getElementById('bookDetailContent').innerHTML = '<div class="loading"><div class="spinner"></div> Завантаження...</div>';
+  const book = await apiFetch('/books/' + id);
+  if (!book || book.error) {
+    document.getElementById('bookDetailContent').innerHTML = '<p style="padding:2rem;color:var(--muted)">Книгу не знайдено.</p>';
+    return;
+  }
+  const authorName    = getAuthorName(book);
+  const publisherName = book.publisher?.name || '';
+  const cats = (book.categories||[]).map(c => `<span class="detail-cat-tag">${c.name}</span>`).join('');
+  const safeTitle  = (book.title  ||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const safeAuthor = (authorName  ||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+  document.getElementById('bookDetailContent').innerHTML = `
+    <button class="back-btn" onclick="showPage('catalog')">← Назад до каталогу</button>
+    <div class="detail-layout">
+      ${bookCoverHTML(book,'detail')}
+      <div class="detail-info">
+        ${cats ? `<div class="detail-categories">${cats}</div>` : ''}
+        <h1 class="detail-title">${book.title}</h1>
+        <div class="detail-author">Автор: <span>${authorName}</span></div>
+        <div class="detail-price-row">
+          <div class="detail-price">${book.price} грн</div>
+          <div class="detail-stock ${book.stock<=3?'low':''}">${book.stock>0?`✓ В наявності: ${book.stock} шт`:'✕ Немає в наявності'}</div>
+        </div>
+        <div class="qty-row">
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeQty(-1)">−</button>
+            <input type="number" class="qty-num" id="detailQty" value="1" min="1" max="${book.stock}">
+            <button class="qty-btn" onclick="changeQty(1)">+</button>
+          </div>
+          ${book.stock>0
+            ? `<button class="detail-add-btn" onclick="addDetailToCart('${book.book_id}','${safeTitle}','${safeAuthor}',${book.price})">🛒 До кошика</button>`
+            : `<button class="detail-add-btn" style="opacity:.4;cursor:not-allowed" disabled>Немає в наявності</button>`}
+        </div>
+        <hr class="detail-divider">
+        <div class="detail-specs">
+          ${book.isbn     ?`<div class="spec-row"><div class="spec-key">ISBN</div><div class="spec-val">${book.isbn}</div></div>`:''}
+          ${book.year     ?`<div class="spec-row"><div class="spec-key">Рік</div><div class="spec-val">${book.year}</div></div>`:''}
+          ${book.pages    ?`<div class="spec-row"><div class="spec-key">Сторінок</div><div class="spec-val">${book.pages}</div></div>`:''}
+          ${publisherName ?`<div class="spec-row"><div class="spec-key">Видавництво</div><div class="spec-val">${publisherName}</div></div>`:''}
+        </div>
+        ${book.description?`<div class="detail-desc">${book.description}</div>`:''}
+      </div>
+    </div>
+    <div class="reviews-section">
+      <h3>Відгуки покупців</h3>
+      <div id="reviewsList"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  loadReviews(id);
+}
+
+function changeQty(delta) {
+  const inp = document.getElementById('detailQty');
+  if (inp) inp.value = Math.max(1, parseInt(inp.value) + delta);
+}
+
+function addDetailToCart(bookId, title, author, price) {
+  const qty = parseInt(document.getElementById('detailQty')?.value || 1);
+  addToCart({ book_id:bookId, title, author, price }, qty);
+}
+
+async function loadReviews(bookId) {
+  const data = await apiFetch('/reviews/book/' + bookId);
+  const el = document.getElementById('reviewsList');
+  if (!el) return;
+  if (!data || !data.reviews?.length) { el.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Поки немає відгуків. Будьте першим!</p>'; return; }
+  el.innerHTML = `
+    <p style="margin-bottom:1rem;font-size:.85rem;color:var(--muted)">Середня оцінка: <strong style="color:var(--gold)">★ ${data.average_rating.toFixed(1)}</strong> (${data.total_reviews} відгуків)</p>
+    ${data.reviews.map(r=>`
+      <div class="review-card">
+        <div class="review-header"><span class="review-name">${r.customer}</span><span class="review-date">${r.date}</span></div>
+        <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+        <div class="review-text">${r.comment}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ════════════════════════════════════════
+//  CATALOG
+// ════════════════════════════════════════
+async function loadCatalog() {
+  if (!allBooks.length) {
+    const base = await apiFetch('/books') || [];
+    const detailed = await Promise.all(base.map(b => apiFetch('/books/' + b.book_id)));
+    allBooks = detailed.map((d,i) => d && !d.error ? d : base[i]);
+  }
+  if (!allCategories.length) {
+    const c = await apiFetch('/categories');
+    allCategories = c || [];
+    document.getElementById('sidebarCats').innerHTML = allCategories.map(c =>
+      `<label class="filter-option"><input type="checkbox" value="${c.category_id}" class="catCheck"> <span>${c.name}</span></label>`
+    ).join('');
+  }
+  renderCatalog(allBooks);
+}
+
+function renderCatalog(books) {
+  document.getElementById('resultsCount').textContent = `Знайдено: ${books.length} книг`;
+  renderBooksGrid('catalogGrid', books);
+}
+
+// ════════════════════════════════════════
+//  ВИПРАВЛЕНО: пошук без "undefined"
+// ════════════════════════════════════════
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { renderCatalog(allBooks); return; }
+
+  const data = await apiFetch('/books/search/' + encodeURIComponent(q));
+  let results;
+
+  if (data && data.results && data.results.length > 0) {
+    // Збагачуємо скорочені результати повними даними з allBooks
+    results = data.results.map(r => {
+      const full = allBooks.find(b => b.book_id === r.book_id);
+      return full || r;
+    });
+  } else {
+    // Локальний пошук по повних даних
+    const lq = q.toLowerCase();
+    results = allBooks.filter(b => {
+      const title  = (b.title || '').toLowerCase();
+      const author = getAuthorName(b).toLowerCase();
+      return title.includes(lq) || author.includes(lq);
+    });
+  }
+  renderCatalog(results);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('searchInput') === document.activeElement) doSearch();
+});
+
+// ════════════════════════════════════════
+//  ВИПРАВЛЕНО: фільтр категорій працює
+//  для обох форматів даних з API
+// ════════════════════════════════════════
+function applyFilters() {
+  const checkedCats = [...document.querySelectorAll('.catCheck:checked')].map(c => c.value);
+  const minP = parseFloat(document.getElementById('priceMin').value) || 0;
+  const maxP = parseFloat(document.getElementById('priceMax').value) || 99999;
+
+  let filtered = allBooks.filter(b => b.price >= minP && b.price <= maxP);
+
+  if (checkedCats.length) {
+    filtered = filtered.filter(b => {
+      // Варіант А: книга має масив categories з category_id (детальний ендпоінт)
+      if (b.categories && b.categories.length > 0) {
+        const ids = b.categories.map(c => c.category_id);
+        return checkedCats.some(id => ids.includes(id));
+      }
+      // Варіант Б: книга має рядок category (список /api/books)
+      const catStr = (b.category || '').toLowerCase();
+      return checkedCats.some(id => {
+        const found = allCategories.find(c => c.category_id === id);
+        return found && catStr.includes(found.name.toLowerCase());
+      });
+    });
+  }
+  renderCatalog(filtered);
+}
+
+function resetFilters() {
+  document.querySelectorAll('.catCheck').forEach(c => c.checked = false);
+  document.getElementById('priceMin').value = 0;
+  document.getElementById('priceMax').value = 9999;
+  document.getElementById('searchInput').value = '';
+  renderCatalog(allBooks);
+}
+
+function filterByCat(catId) {
+  showPage('catalog');
+  setTimeout(() => {
+    document.querySelectorAll('.catCheck').forEach(c => c.checked = false);
+    const cb = document.querySelector(`.catCheck[value="${catId}"]`);
+    if (cb) cb.checked = true;
+    document.getElementById('searchInput').value = '';
+    applyFilters();
+  }, 150);
+}
+
+// ════════════════════════════════════════
+//  КОШИК
+// ════════════════════════════════════════
+function renderCart() {
+  const el  = document.getElementById('cartItems');
+  const sec = document.getElementById('cartCheckoutSection');
+  if (!cart.length) {
+    el.innerHTML = `<div class="cart-empty"><div class="empty-icon">📭</div><h3>Кошик порожній</h3><p style="margin-top:.5rem">Додайте книги з каталогу</p><br><button class="btn-primary" onclick="showPage('catalog')" style="margin-top:1rem">До каталогу</button></div>`;
+    sec.style.display = 'none'; return;
+  }
+  sec.style.display = 'block';
+  el.innerHTML = cart.map(item => `
+    <div class="cart-item">
+      <div class="cart-item-cover">
+        ${bookImages[item.book_id]
+          ? `<img src="${bookImages[item.book_id]}" alt="${item.title}" onerror="this.parentNode.innerHTML='📖'">`
+          : '📖'}
+      </div>
+      <div class="cart-item-info">
+        <div class="cart-item-title">${item.title}</div>
+        <div class="cart-item-author">${item.author||''}</div>
+      </div>
+      <div class="cart-item-actions">
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeCartQty('${item.book_id}',-1)">−</button>
+          <input type="number" class="qty-num" value="${item.qty}" onchange="setCartQty('${item.book_id}',this.value)" style="width:40px">
+          <button class="qty-btn" onclick="changeCartQty('${item.book_id}',1)">+</button>
+        </div>
+        <div class="cart-item-price">${(item.price*item.qty).toFixed(0)} грн</div>
+        <button class="remove-btn" onclick="removeFromCart('${item.book_id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  const total    = cart.reduce((s,i) => s + i.price*i.qty, 0);
+  const delivery = total >= 500 ? 0 : 65;
+  document.getElementById('cartSummary').innerHTML = `
+    <div class="summary-row"><span>Товари (${cart.reduce((s,i)=>s+i.qty,0)} шт)</span><span>${total} грн</span></div>
+    <div class="summary-row"><span>Доставка</span><span>${delivery===0?'🎁 Безкоштовно':delivery+' грн'}</span></div>
+    <hr class="summary-divider">
+    <div class="summary-row"><span class="summary-total">Разом</span><span class="summary-total" style="color:var(--rust)">${total+delivery} грн</span></div>
+    ${total<500?`<p style="font-size:.72rem;color:var(--sage);margin-top:.5rem">💡 Замовте ще на ${500-total} грн — і доставка безкоштовна!</p>`:`<p style="font-size:.72rem;color:var(--sage)">✓ Безкоштовна доставка!</p>`}
+  `;
+}
+
+function changeCartQty(id, delta) {
+  const item = cart.find(i => i.book_id===id);
+  if (item) { item.qty = Math.max(1, item.qty+delta); saveCart(); renderCart(); }
+}
+function setCartQty(id, val) {
+  const item = cart.find(i => i.book_id===id);
+  if (item) { item.qty = Math.max(1, parseInt(val)||1); saveCart(); renderCart(); }
+}
+function selectPayment(type) {
+  selectedPayment = type;
+  document.querySelectorAll('.pay-opt').forEach(el => el.classList.remove('selected'));
+  document.getElementById('pay-'+type)?.classList.add('selected');
+}
+
+async function placeOrder() {
+  const name     = document.getElementById('chkName').value.trim();
+  const phone    = document.getElementById('chkPhone').value.trim();
+  const email    = document.getElementById('chkEmail').value.trim();
+  const address  = document.getElementById('chkAddress').value.trim();
+  const delivery = document.getElementById('chkDelivery').value;
+  if (!name||!phone||!address) { showToast('Заповніть усі поля!','error'); return; }
+
+  const result   = await apiPost('/orders', {
+    customer_id:'guest',
+    items: cart.map(i=>({book_id:i.book_id,title:i.title,quantity:i.qty,price:i.price})),
+    delivery_address:`${delivery}, ${address}`,
+    payment_method: selectedPayment==='card'?'картка онлайн':'готівка при отриманні',
+    customer_name:name, phone, email
+  });
+  const orderNum = result?.order?.order_number || 'ORD-2026-' + String(Math.floor(Math.random()*999)).padStart(3,'0');
+  cart = []; saveCart();
+  document.getElementById('successOrderNum').textContent = orderNum;
+  showPage('success');
+}
+
+// ════════════════════════════════════════
+//  CONTACTS
+// ════════════════════════════════════════
+async function loadContacts() {
+  const publishers = await apiFetch('/publishers');
+  if (publishers) {
+    document.getElementById('publishersList').innerHTML = publishers.map(p =>
+      `<div style="margin-bottom:.5rem"><strong>${p.name}</strong> — ${p.city} · <span style="color:var(--gold)">${p.website}</span></div>`
+    ).join('');
+  }
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+updateCartCount();
+loadHome();
+</script>
+</body>
+</html>
