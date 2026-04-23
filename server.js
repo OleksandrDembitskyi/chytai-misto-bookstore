@@ -8,6 +8,7 @@ require('dotenv').config();
 
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
+const nodemailer = require('nodemailer');
 const dns = require('dns');
 
 // Встановлюємо DNS сервер Google (вирішує проблему ENOTFOUND)
@@ -47,6 +48,78 @@ async function connectDB() {
   } catch (err) {
     console.error('❌ Помилка підключення до MongoDB:', err);
     process.exit(1);
+  }
+}
+
+// ============================================
+// NODEMAILER — налаштування
+// ============================================
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
+});
+
+async function sendOrderEmails(order) {
+  const itemsList = order.items.map(i =>
+    `• ${i.title} — ${i.quantity} шт × ${i.price} грн = ${i.quantity * i.price} грн`
+  ).join('\n');
+
+  const total = order.items.reduce((s, i) => s + i.quantity * i.price, 0);
+  const delivery = total >= 500 ? 0 : 65;
+
+  // Лист адміну
+  await transporter.sendMail({
+    from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+    to: process.env.ADMIN_EMAIL,
+    subject: `📦 Нове замовлення ${order.order_number}`,
+    text: `
+Нове замовлення на сайті Читай-місто!
+
+Номер: ${order.order_number}
+Клієнт: ${order.customer_name}
+Телефон: ${order.phone}
+Email: ${order.email}
+Адреса доставки: ${order.delivery_address}
+Оплата: ${order.payment_method}
+
+Товари:
+${itemsList}
+
+Доставка: ${delivery === 0 ? 'Безкоштовно' : delivery + ' грн'}
+Разом: ${total + delivery} грн
+    `.trim()
+  });
+
+  // Лист клієнту (тільки якщо вказав email)
+  if (order.email) {
+    await transporter.sendMail({
+      from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+      to: order.email,
+      subject: `✅ Ваше замовлення ${order.order_number} прийнято`,
+      text: `
+Дякуємо за замовлення у книгарні Читай-місто!
+
+Номер вашого замовлення: ${order.order_number}
+
+Ваші книги:
+${itemsList}
+
+Доставка: ${delivery === 0 ? 'Безкоштовно' : delivery + ' грн'}
+До сплати: ${total + delivery} грн
+
+Спосіб доставки: ${order.delivery_address}
+Оплата: ${order.payment_method}
+
+Ми зв'яжемося з вами найближчим часом для підтвердження.
+
+З повагою,
+Книгарня Читай-місто
+📞 +38 (032) 123-45-67
+      `.trim()
+    });
   }
 }
 
@@ -347,6 +420,15 @@ app.post('/api/orders', async (req, res) => {
     };
 
     const result = await db.collection('orders').insertOne(newOrder);
+
+    // Відправка email сповіщень
+    try {
+      await sendOrderEmails(newOrder);
+      console.log('✅ Emails відправлено для замовлення', newOrder.order_number);
+    } catch (emailErr) {
+      console.warn('⚠️ Помилка відправки email:', emailErr.message);
+    }
+
     res.status(201).json({
       message: 'Замовлення створено',
       order: { ...newOrder, order_id: result.insertedId.toString() }
@@ -448,7 +530,7 @@ app.get('/api/health', (req, res) => {
 // ============================================
 // ГОЛОВНА СТОРІНКА
 // ============================================
-app.get('/', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
