@@ -11,12 +11,18 @@ const PORT = 3000;
 
 // Middleware для парсингу JSON
 app.use(express.json());
+
+// Роздача статичних файлів (фронтенд)
+app.use(express.static('public'));
+
+// CORS налаштування
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
   next();
 });
+
 // ============================================
 // 1. АВТОРИ (authors) - 5 авторів
 // ============================================
@@ -283,7 +289,6 @@ app.delete("/api/publishers/:id", (req, res) => {
 // 3. КАТЕГОРІЇ (categories) - 7 категорій
 // ============================================
 
-// Отримати всі категорії
 // Отримати всі категорії (оновлена версія з 10 категоріями)
 app.get("/api/categories", (req, res) => {
     const categories = [
@@ -1710,36 +1715,12 @@ app.get("/api/stats", (req, res) => {
 });
 
 // ============================================
-// 10. ТЕСТОВИЙ МАРШРУТ
+// 10. ГОЛОВНА СТОРІНКА (ФРОНТЕНД)
 // ============================================
 
+// Головна сторінка - віддає фронтенд
 app.get("/", (req, res) => {
-    res.json({
-        message: "Ласкаво просимо до API книгарні 'Читай-місто'!",
-        version: "1.0.0 (повна версія з усіма даними з БД)",
-        author: "Дембіцький О.Ю., група ПП-32",
-        statistics: {
-            authors: 5,
-            publishers: 5,
-            categories: 7,
-            customers: 5,
-            books: 5,
-            orders: 4,
-            reviews: 7,
-            inventory_operations: 12
-        },
-        endpoints: [
-            "/api/authors",
-            "/api/publishers",
-            "/api/categories",
-            "/api/customers",
-            "/api/books",
-            "/api/orders",
-            "/api/reviews",
-            "/api/inventory",
-            "/api/stats"
-        ]
-    });
+    res.sendFile(__dirname + '/public/index.html');
 });
 
 // ============================================
