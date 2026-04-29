@@ -4,9 +4,9 @@
 
 ## 🚀 Онлайн доступ
 
-- **Сайт (Production):** `https://chytai-misto-bookstore.vercel.app`
-- **API (список книг):** `https://chytai-misto-bookstore.vercel.app/api/books`
-- **Статистика:** `https://chytai-misto-bookstore.vercel.app/api/stats`
+- **Сайт (Production):** https://chytai-misto-bookstore.vercel.app
+- **API (список книг):** https://chytai-misto-bookstore.vercel.app/api/books
+- **Статистика:** https://chytai-misto-bookstore.vercel.app/api/stats
 
 ## 🛠 Технології
 
@@ -23,50 +23,61 @@
    ```bash
    git clone https://github.com/OleksandrDembitskyi/chytai-misto-bookstore.git
    cd chytai-misto-bookstore
-Перейти в гілку develop (актуальна версія):
+   ```
 
-bash
-git checkout develop
-Встановити залежності:
+2. Перейти в гілку develop (актуальна версія):
+   ```bash
+   git checkout develop
+   ```
 
-bash
-npm install
-Створити файл .env в корені проекту зі змінною:
+3. Встановити залежності:
+   ```bash
+   npm install
+   ```
 
-env
-MONGODB_URI=mongodb+srv://<username>:<password>@bookstore-cluster.mongodb.net/
-Запустити сервер:
+4. Створити файл .env в корені проекту зі змінною:
+   ```env
+   MONGODB_URI=mongodb+srv://<username>:<password>@bookstore-cluster.mongodb.net/
+   ```
 
-bash
-npm start
-Відкрити в браузері: http://localhost:3000
+5. Запустити сервер:
+   ```bash
+   npm start
+   ```
 
-🔗 Основні API endpoints
-Метод	Endpoint	Опис
-GET	/api/books	Список всіх книг
-GET	/api/books/:id	Деталі книги
-GET	/api/books/search/:query	Пошук книг
-GET	/api/authors	Список авторів
-GET	/api/publishers	Список видавництв
-GET	/api/categories	Список категорій
-GET	/api/customers	Список клієнтів
-GET	/api/orders	Список замовлень
-POST	/api/orders	Створити замовлення
-GET	/api/reviews	Список відгуків
-GET	/api/stats	Статистика продажів
-🧪 Тестування
-bash
+6. Відкрити в браузері: http://localhost:3000
+
+## 🔗 Основні API endpoints
+
+| Метод | Endpoint | Опис |
+|------|---------|------|
+| GET | /api/books | Список всіх книг |
+| GET | /api/books/:id | Деталі книги |
+| GET | /api/books/search/:query | Пошук книг |
+| GET | /api/authors | Список авторів |
+| GET | /api/publishers | Список видавництв |
+| GET | /api/categories | Список категорій |
+| GET | /api/customers | Список клієнтів |
+| GET | /api/orders | Список замовлень |
+| POST | /api/orders | Створити замовлення |
+| GET | /api/reviews | Список відгуків |
+| GET | /api/stats | Статистика продажів |
+
+## 🧪 Тестування
+
+```bash
 npm test
-🌿 GitFlow
-main – стабільна продакшн-версія
+```
 
-develop – актуальна розробка
+## 🌿 GitFlow
 
-feature/server – розробка бекенду (базова версія)
+- main – стабільна продакшн-версія
+- develop – актуальна розробка
+- feature/server – розробка бекенду (базова версія)
+- feature/client – розробка фронтенду (базова версія)
 
-feature/client – розробка фронтенду (базова версія)
+## 👨‍💻 Автор
 
-👨‍💻 Автор
-Дембіцький Олександр, група ПП-32
-Курсова робота з дисципліни «Проектування та розробка інформаційних систем»
+Дембіцький Олександр, група ПП-32  
+Курсова робота з дисципліни «Проектування та розробка інформаційних систем»  
 Національний університет «Львівська політехніка», 2026
