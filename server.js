@@ -368,6 +368,48 @@ app.get('/api/books/:id', async (req, res) => {
 });
 
 // ============================================
+// 5d. ПОПОВНЕННЯ СКЛАДУ (для менеджера)
+// ============================================
+app.patch('/api/books/:id/stock', async (req, res) => {
+  try {
+    const { quantity } = req.body;
+
+    // Перевірка що quantity — число і не нульове
+    if (typeof quantity !== 'number' || quantity === 0) {
+      return res.status(400).json({ error: 'Вкажіть кількість (число, не нуль)' });
+    }
+
+    // Отримуємо поточний stock щоб не допустити від'ємного значення
+    const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+    if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+
+    const newStock = book.stock + quantity;
+    if (newStock < 0) {
+      return res.status(400).json({
+        error: `Неможливо зменшити склад: зараз ${book.stock} шт, ви намагаєтесь зняти ${Math.abs(quantity)} шт`
+      });
+    }
+
+    // Оновлюємо stock
+    await db.collection('books').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $inc: { stock: quantity } }
+    );
+
+    res.json({
+      message: 'Склад оновлено',
+      book_id: req.params.id,
+      title: book.title,
+      old_stock: book.stock,
+      change: quantity > 0 ? `+${quantity}` : `${quantity}`,
+      new_stock: newStock
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
 // 6. ЗАМОВЛЕННЯ
 // ============================================
 app.get('/api/orders', async (req, res) => {
@@ -401,6 +443,46 @@ app.post('/api/orders', async (req, res) => {
   try {
     const { customer_id, items, delivery_address, payment_method, customer_name, phone, email } = req.body;
 
+    // ============================================
+    // ПЕРЕВІРКА НАЯВНОСТІ КНИГ НА СКЛАДІ
+    // ============================================
+    for (const item of (items || [])) {
+      let book;
+      try {
+        book = await db.collection('books').findOne({ _id: new ObjectId(item.book_id) });
+      } catch {
+        return res.status(400).json({ error: `Невірний ID книги: ${item.book_id}` });
+      }
+
+      if (!book) {
+        return res.status(400).json({ error: `Книгу "${item.title}" не знайдено` });
+      }
+
+      if (book.stock < item.quantity) {
+        if (book.stock === 0) {
+          return res.status(400).json({
+            error: `Книга "${item.title}" закінчилась на складі`
+          });
+        }
+        return res.status(400).json({
+          error: `Книга "${item.title}": доступно лише ${book.stock} шт, а ви замовили ${item.quantity} шт`
+        });
+      }
+    }
+
+    // ============================================
+    // ЗМЕНШУЄМО STOCK ДЛЯ КОЖНОЇ КНИГИ
+    // ============================================
+    for (const item of (items || [])) {
+      await db.collection('books').updateOne(
+        { _id: new ObjectId(item.book_id) },
+        { $inc: { stock: -item.quantity } }
+      );
+    }
+
+    // ============================================
+    // СТВОРЮЄМО ЗАМОВЛЕННЯ
+    // ============================================
     const total = (items || []).reduce((s, i) => s + (i.price * i.quantity), 0);
     const orderNumber = 'ORD-2026-' + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
 

@@ -923,17 +923,30 @@ async function placeOrder() {
   const email    = document.getElementById('chkEmail').value.trim();
   const address  = document.getElementById('chkAddress').value.trim();
   const delivery = document.getElementById('chkDelivery').value;
-  if (!name||!phone||!address) { showToast('Заповніть усі поля!','error'); return; }
+
+  if (!name || !phone || !address) { 
+    showToast('Заповніть усі поля!', 'error'); 
+    return; 
+  }
 
   const result = await apiPost('/orders', {
-    customer_id:'guest',
-    items: cart.map(i=>({book_id:i.book_id,title:i.title,quantity:i.qty,price:i.price})),
-    delivery_address:`${delivery}, ${address}`,
-    payment_method: selectedPayment==='card'?'картка онлайн':'готівка при отриманні',
-    customer_name:name, phone, email
+    customer_id: 'guest',
+    items: cart.map(i => ({ book_id: i.book_id, title: i.title, quantity: i.qty, price: i.price })),
+    delivery_address: `${delivery}, ${address}`,
+    payment_method: selectedPayment === 'card' ? 'картка онлайн' : 'готівка при отриманні',
+    customer_name: name, phone, email
   });
-  const orderNum = result?.order?.order_number || 'ORD-2026-' + String(Math.floor(Math.random()*999)).padStart(3,'0');
-  cart = []; saveCart();
+
+  // Якщо сервер повернув помилку (наприклад книга закінчилась)
+  if (!result || result.error) {
+    showToast(result?.error || 'Помилка оформлення замовлення', 'error');
+    return; // зупиняємось, кошик НЕ очищаємо
+  }
+
+  // Все добре — очищаємо кошик і показуємо успіх
+  const orderNum = result?.order?.order_number || 'ORD-2026-' + String(Math.floor(Math.random() * 999)).padStart(3, '0');
+  cart = []; 
+  saveCart();
   document.getElementById('successOrderNum').textContent = orderNum;
   showPage('success');
 }
