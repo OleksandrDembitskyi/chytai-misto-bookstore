@@ -10,925 +10,829 @@ const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const nodemailer = require('nodemailer');
 const dns = require('dns');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-// Встановлюємо DNS сервер Google (вирішує проблему ENOTFOUND)
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'readcity_secret_2026';
 
-// Middleware
-app.use(express.json());
-app.use(express.static('public'));
-
-// CORS
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH');
-  next();
+// ─── Cloudinary (зображення книг) ──────────
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Підключення до MongoDB Atlas (пароль з .env)
-const uri = process.env.MONGODB_URI;
-if (!uri) {
-  console.error('❌ Помилка: MONGODB_URI не знайдено в .env файлі!');
-  process.exit(1);
-}
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'bookstore_crm/books',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+        transformation: [{ width: 500, height: 700, crop: 'limit' }]
+    }
+});
 
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+// ─── Middleware ────────────────────────────
+app.use(express.json());
+app.use(express.static('public'));
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
+
+// ─── MongoDB ───────────────────────────────
+const uri = process.env.MONGODB_URI;
+if (!uri) { console.error('❌ MONGODB_URI не знайдено!'); process.exit(1); }
 const client = new MongoClient(uri);
 let db;
 
 async function connectDB() {
-  try {
-    await client.connect();
-    db = client.db('bookstore_crm');
-    console.log('✅ Підключено до MongoDB Atlas');
-    console.log('📚 База даних: bookstore_crm');
-  } catch (err) {
-    console.error('❌ Помилка підключення до MongoDB:', err);
-    process.exit(1);
-  }
+    try {
+        await client.connect();
+        db = client.db('bookstore_crm');
+        await db.collection('users').createIndex({ email: 1 }, { unique: true });
+        console.log('✅ Підключено до MongoDB Atlas — bookstore_crm');
+    } catch (err) {
+        console.error('❌ MongoDB:', err.message);
+        process.exit(1);
+    }
 }
 
 // ============================================
-// EMAIL — БАЗОВИЙ HTML-ШАБЛОН
+//  JWT MIDDLEWARE
 // ============================================
-function emailBaseTemplate(content) {
-  return `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Читай-місто</title>
-</head>
-<body style="margin:0;padding:0;background-color:#f5f0e8;font-family:'Georgia',serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f0e8;padding:40px 20px;">
-    <tr>
-      <td align="center">
+function authMiddleware(req, res, next) {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Необхідна авторизація' });
+    try {
+        req.user = jwt.verify(token, JWT_SECRET);
+        next();
+    } catch {
+        res.status(401).json({ error: 'Невалідний або прострочений токен' });
+    }
+}
+
+function optionalAuth(req, res, next) {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (token) {
+        try { req.user = jwt.verify(token, JWT_SECRET); } catch { }
+    }
+    next();
+}
+
+function requireRole(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.user?.role))
+            return res.status(403).json({ error: 'Доступ заборонено' });
+        next();
+    };
+}
+
+// ============================================
+//  EMAIL TEMPLATES
+// ============================================
+function emailBase(content) {
+    return `<!DOCTYPE html><html lang="uk"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:Georgia,serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 20px;">
+    <tr><td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-          <!-- HEADER -->
-          <tr>
-            <td style="background-color:#1a1008;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
-              <div style="font-size:32px;margin-bottom:8px;">📚</div>
-              <div style="font-family:'Georgia',serif;font-size:26px;font-weight:bold;color:#e8b84b;letter-spacing:2px;">
-                Читай-місто
-              </div>
-              <div style="color:rgba(245,240,232,0.5);font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:4px;font-family:Arial,sans-serif;">
-                Книгарня · Львів
-              </div>
-            </td>
-          </tr>
-
-          <!-- DECORATIVE STRIPE -->
-          <tr>
-            <td style="background:linear-gradient(90deg,#8b3a1e,#c8922a,#e8b84b,#c8922a,#8b3a1e);height:4px;"></td>
-          </tr>
-
-          <!-- MAIN CONTENT -->
-          <tr>
-            <td style="background-color:#fffdf8;padding:40px;border-radius:0 0 12px 12px;border:1px solid #ede5d0;border-top:none;">
-              ${content}
-            </td>
-          </tr>
-
-          <!-- FOOTER -->
-          <tr>
-            <td style="padding:28px 20px;text-align:center;">
-              <p style="color:#7a6e5f;font-size:12px;font-family:Arial,sans-serif;margin:0 0 8px;">
-                📍 вул. Книжкова, 7, Львів &nbsp;|&nbsp; 📞 +38 (032) 123-45-67 &nbsp;|&nbsp; ✉️ info@chytai-misto.ua
-              </p>
-              <p style="color:#a09080;font-size:11px;font-family:Arial,sans-serif;margin:0;">
-                © 2026 Читай-місто. Усі права захищені.
-              </p>
-            </td>
-          </tr>
-
+            <tr><td style="background:#1a1008;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
+                <div style="font-size:32px;">📚</div>
+                <div style="font-family:Georgia,serif;font-size:26px;font-weight:bold;color:#e8b84b;letter-spacing:2px;">Читай-місто</div>
+                <div style="color:rgba(245,240,232,0.5);font-size:12px;letter-spacing:3px;text-transform:uppercase;font-family:Arial,sans-serif;">Книгарня · Львів</div>
+            </td></tr>
+            <tr><td style="background:linear-gradient(90deg,#8b3a1e,#c8922a,#e8b84b,#c8922a,#8b3a1e);height:4px;"></td></tr>
+            <tr><td style="background:#fffdf8;padding:40px;border-radius:0 0 12px 12px;border:1px solid #ede5d0;border-top:none;">${content}</td></tr>
+            <tr><td style="padding:20px;text-align:center;">
+                <p style="color:#7a6e5f;font-size:12px;font-family:Arial,sans-serif;margin:0;">
+                    📍 вул. Книжкова, 7, Львів &nbsp;|&nbsp; 📞 +38 (032) 123-45-67 &nbsp;|&nbsp; ✉️ info@chytai-misto.ua
+                </p>
+                <p style="color:#a09080;font-size:11px;font-family:Arial,sans-serif;margin:4px 0 0;">© 2026 Читай-місто.</p>
+            </td></tr>
         </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+    </td></tr>
+</table>
+</body></html>`;
 }
 
-// ============================================
-// EMAIL — ЛИСТ КЛІЄНТУ (підтвердження замовлення)
-// ============================================
 function buildClientOrderEmail(order) {
-  const total = order.items.reduce((s, i) => s + i.quantity * i.price, 0);
-  const delivery = total >= 500 ? 0 : 65;
-  const grandTotal = total + delivery;
-
-  const itemsRows = order.items.map(i => `
-    <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#1a1008;">
-        📖 ${i.title}
-      </td>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#7a6e5f;text-align:center;">
-        ${i.quantity} шт
-      </td>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#8b3a1e;text-align:right;font-weight:bold;">
-        ${i.quantity * i.price} грн
-      </td>
-    </tr>
-  `).join('');
-
-  const content = `
-    <!-- GREETING -->
-    <h2 style="font-family:'Georgia',serif;color:#1a1008;font-size:22px;margin:0 0 8px;">
-      Дякуємо за замовлення! 🎉
-    </h2>
-    <p style="color:#7a6e5f;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;margin:0 0 28px;">
-      Вітаємо, <strong style="color:#1a1008;">${order.customer_name}</strong>! Ваше замовлення успішно прийнято. 
-      Ми зв'яжемося з вами найближчим часом для підтвердження.
-    </p>
-
-    <!-- ORDER NUMBER BADGE -->
-    <div style="background:linear-gradient(135deg,#1a1008,#2d1f0e);border-radius:8px;padding:20px;text-align:center;margin-bottom:28px;">
-      <div style="color:rgba(245,240,232,0.6);font-family:Arial,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">
-        Номер замовлення
-      </div>
-      <div style="color:#e8b84b;font-family:'Georgia',serif;font-size:24px;font-weight:bold;letter-spacing:2px;">
-        ${order.order_number}
-      </div>
-    </div>
-
-    <!-- BOOKS TABLE -->
-    <div style="margin-bottom:24px;">
-      <div style="font-family:'Georgia',serif;font-size:15px;color:#1a1008;font-weight:bold;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #c8922a;">
-        📦 Ваші книги
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <thead>
-          <tr style="background-color:#f5f0e8;">
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:left;">Назва</th>
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:center;">Кіл-ть</th>
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:right;">Сума</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsRows}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- TOTALS -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-      <tr>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Товари:</td>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;text-align:right;padding:5px 0;">${total} грн</td>
-      </tr>
-      <tr>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Доставка:</td>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:${delivery === 0 ? '#4a6741' : '#1a1008'};text-align:right;padding:5px 0;">
-          ${delivery === 0 ? '🎁 Безкоштовно' : delivery + ' грн'}
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" style="border-top:1px solid #ede5d0;padding-top:10px;"></td>
-      </tr>
-      <tr>
-        <td style="font-family:'Georgia',serif;font-size:17px;color:#1a1008;font-weight:bold;padding:4px 0;">До сплати:</td>
-        <td style="font-family:'Georgia',serif;font-size:17px;color:#8b3a1e;font-weight:bold;text-align:right;padding:4px 0;">${grandTotal} грн</td>
-      </tr>
-    </table>
-
-    <!-- DELIVERY INFO -->
-    <div style="background-color:#f5f0e8;border-radius:8px;padding:18px 20px;margin-bottom:20px;border-left:3px solid #c8922a;">
-      <div style="font-family:'Georgia',serif;font-size:13px;font-weight:bold;color:#1a1008;margin-bottom:10px;">🚚 Деталі доставки</div>
-      <div style="font-family:Arial,sans-serif;font-size:13px;color:#3d3020;line-height:1.8;">
-        <span style="color:#7a6e5f;">Адреса:</span> ${order.delivery_address}<br>
-        <span style="color:#7a6e5f;">Оплата:</span> ${order.payment_method}
-      </div>
-    </div>
-
-    <p style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;line-height:1.6;margin:0;text-align:center;">
-      Маєте питання? Звертайтесь: <a href="tel:+380321234567" style="color:#c8922a;text-decoration:none;">+38 (032) 123-45-67</a> або 
-      <a href="mailto:orders@chytai-misto.ua" style="color:#c8922a;text-decoration:none;">orders@chytai-misto.ua</a>
-    </p>
-  `;
-
-  return emailBaseTemplate(content);
+    const total = order.items.reduce((s, i) => s + i.quantity * i.price, 0);
+    const delivery = total >= 500 ? 0 : 65;
+    const rows = order.items.map(i =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;">📖 ${i.title}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;text-align:center;">${i.quantity}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#8b3a1e;text-align:right;font-weight:bold;">${i.quantity * i.price} грн</td></tr>`
+    ).join('');
+    return emailBase(`
+        <h2 style="font-family:Georgia,serif;color:#1a1008;font-size:22px;margin:0 0 8px;">Дякуємо за замовлення! 🎉</h2>
+        <p style="color:#7a6e5f;font-family:Arial,sans-serif;font-size:14px;margin:0 0 24px;">Вітаємо, <strong>${order.customer_name}</strong>! Ваше замовлення прийнято.</p>
+        <div style="background:#1a1008;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
+            <div style="color:rgba(245,240,232,0.6);font-size:11px;letter-spacing:3px;font-family:Arial,sans-serif;">НОМЕР ЗАМОВЛЕННЯ</div>
+            <div style="color:#e8b84b;font-family:Georgia,serif;font-size:24px;font-weight:bold;">${order.order_number}</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0"><thead><tr style="background:#f5f0e8;">
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:left;">Назва</th>
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:center;">Кіл-ть</th>
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:right;">Сума</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+        <div style="margin-top:16px;font-family:Arial,sans-serif;font-size:14px;">
+            <div>Доставка: ${delivery === 0 ? '🎁 Безкоштовно' : delivery + ' грн'}</div>
+            <div style="font-size:17px;font-weight:bold;color:#8b3a1e;">Разом: ${total + delivery} грн</div>
+        </div>
+        <div style="background:#f5f0e8;border-left:3px solid #c8922a;padding:14px 16px;margin-top:20px;border-radius:0 8px 8px 0;font-family:Arial,sans-serif;font-size:13px;">
+            🚚 ${order.delivery_address}<br>💳 ${order.payment_method}
+        </div>
+    `);
 }
 
-// ============================================
-// EMAIL — ЛИСТ АДМІНУ (нове замовлення)
-// ============================================
 function buildAdminOrderEmail(order) {
-  const total = order.items.reduce((s, i) => s + i.quantity * i.price, 0);
-  const delivery = total >= 500 ? 0 : 65;
-  const grandTotal = total + delivery;
-
-  const itemsRows = order.items.map(i => `
-    <tr>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#1a1008;">
-        📖 ${i.title}
-      </td>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#7a6e5f;text-align:center;">
-        ${i.quantity} шт × ${i.price} грн
-      </td>
-      <td style="padding:10px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#8b3a1e;text-align:right;font-weight:bold;">
-        ${i.quantity * i.price} грн
-      </td>
-    </tr>
-  `).join('');
-
-  const content = `
-    <!-- ALERT BADGE -->
-    <div style="background:linear-gradient(135deg,#8b3a1e,#c8922a);border-radius:8px;padding:16px 20px;margin-bottom:28px;text-align:center;">
-      <div style="color:#fff;font-family:Arial,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;">
-        🔔 Нове замовлення на сайті!
-      </div>
-    </div>
-
-    <!-- ORDER NUMBER -->
-    <div style="background:linear-gradient(135deg,#1a1008,#2d1f0e);border-radius:8px;padding:20px;text-align:center;margin-bottom:28px;">
-      <div style="color:rgba(245,240,232,0.6);font-family:Arial,sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">
-        Номер замовлення
-      </div>
-      <div style="color:#e8b84b;font-family:'Georgia',serif;font-size:24px;font-weight:bold;letter-spacing:2px;">
-        ${order.order_number}
-      </div>
-    </div>
-
-    <!-- CLIENT INFO -->
-    <div style="margin-bottom:24px;">
-      <div style="font-family:'Georgia',serif;font-size:15px;color:#1a1008;font-weight:bold;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #c8922a;">
-        👤 Дані клієнта
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;width:120px;">Ім'я:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:5px 0;font-weight:bold;">${order.customer_name}</td>
-        </tr>
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Телефон:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:5px 0;">${order.phone || '—'}</td>
-        </tr>
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Email:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:5px 0;">${order.email || '—'}</td>
-        </tr>
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Доставка:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:5px 0;">${order.delivery_address}</td>
-        </tr>
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Оплата:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:5px 0;">${order.payment_method}</td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- BOOKS TABLE -->
-    <div style="margin-bottom:24px;">
-      <div style="font-family:'Georgia',serif;font-size:15px;color:#1a1008;font-weight:bold;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #c8922a;">
-        📦 Замовлені товари
-      </div>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <thead>
-          <tr style="background-color:#f5f0e8;">
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:left;">Назва</th>
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:center;">Кількість / ціна</th>
-            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-transform:uppercase;letter-spacing:1px;text-align:right;">Сума</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsRows}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- TOTALS -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-      <tr>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Сума товарів:</td>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;text-align:right;padding:5px 0;">${total} грн</td>
-      </tr>
-      <tr>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:5px 0;">Доставка:</td>
-        <td style="font-family:Arial,sans-serif;font-size:13px;color:${delivery === 0 ? '#4a6741' : '#1a1008'};text-align:right;padding:5px 0;">
-          ${delivery === 0 ? 'Безкоштовно' : delivery + ' грн'}
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" style="border-top:1px solid #ede5d0;padding-top:10px;"></td>
-      </tr>
-      <tr>
-        <td style="font-family:'Georgia',serif;font-size:17px;color:#1a1008;font-weight:bold;padding:4px 0;">Разом до оплати:</td>
-        <td style="font-family:'Georgia',serif;font-size:17px;color:#8b3a1e;font-weight:bold;text-align:right;padding:4px 0;">${grandTotal} грн</td>
-      </tr>
-    </table>
-  `;
-
-  return emailBaseTemplate(content);
+    const total = order.items.reduce((s, i) => s + i.quantity * i.price, 0);
+    const delivery = total >= 500 ? 0 : 65;
+    const rows = order.items.map(i =>
+        `<tr><td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;">📖 ${i.title}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;text-align:center;">${i.quantity} × ${i.price} грн</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #ede5d0;font-family:Arial,sans-serif;font-size:14px;color:#8b3a1e;text-align:right;font-weight:bold;">${i.quantity * i.price} грн</td></tr>`
+    ).join('');
+    return emailBase(`
+        <div style="background:linear-gradient(135deg,#8b3a1e,#c8922a);border-radius:8px;padding:14px;margin-bottom:24px;text-align:center;color:#fff;font-family:Arial,sans-serif;font-size:13px;letter-spacing:2px;font-weight:bold;">🔔 НОВЕ ЗАМОВЛЕННЯ</div>
+        <div style="background:#1a1008;border-radius:8px;padding:16px;text-align:center;margin-bottom:20px;">
+            <div style="color:rgba(245,240,232,0.6);font-size:11px;font-family:Arial,sans-serif;">НОМЕР</div>
+            <div style="color:#e8b84b;font-family:Georgia,serif;font-size:22px;font-weight:bold;">${order.order_number}</div>
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+            <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;width:100px;">Клієнт:</td><td style="font-family:Arial,sans-serif;font-size:13px;font-weight:bold;">${order.customer_name}</td></tr>
+            <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;">Телефон:</td><td style="font-family:Arial,sans-serif;font-size:13px;">${order.phone || '—'}</td></tr>
+            <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;">Email:</td><td style="font-family:Arial,sans-serif;font-size:13px;">${order.email || '—'}</td></tr>
+            <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;">Доставка:</td><td style="font-family:Arial,sans-serif;font-size:13px;">${order.delivery_address}</td></tr>
+            <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;">Оплата:</td><td style="font-family:Arial,sans-serif;font-size:13px;">${order.payment_method}</td></tr>
+        </table>
+        <table width="100%" cellpadding="0" cellspacing="0"><thead><tr style="background:#f5f0e8;">
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:left;">Книга</th>
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:center;">Кількість</th>
+            <th style="padding:8px 12px;font-family:Arial,sans-serif;font-size:11px;color:#7a6e5f;text-align:right;">Сума</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+        <div style="margin-top:14px;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#8b3a1e;">
+            Разом: ${total + delivery} грн ${delivery === 0 ? '(доставка безкоштовна)' : `(доставка ${delivery} грн)`}
+        </div>
+    `);
 }
 
-// ============================================
-// EMAIL — ЗВОРОТНІЙ ЗВ'ЯЗОК (адміну)
-// ============================================
 function buildContactEmail(name, email, message) {
-  const content = `
-    <!-- BADGE -->
-    <div style="background:linear-gradient(135deg,#4a6741,#6a8f60);border-radius:8px;padding:16px 20px;margin-bottom:28px;text-align:center;">
-      <div style="color:#fff;font-family:Arial,sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;">
-        ✉️ Нове повідомлення від відвідувача
-      </div>
-    </div>
-
-    <h2 style="font-family:'Georgia',serif;color:#1a1008;font-size:20px;margin:0 0 24px;">
-      Хтось написав вам із сайту!
-    </h2>
-
-    <!-- SENDER INFO -->
-    <div style="background-color:#f5f0e8;border-radius:8px;padding:18px 20px;margin-bottom:24px;border-left:3px solid #c8922a;">
-      <div style="font-family:'Georgia',serif;font-size:13px;font-weight:bold;color:#1a1008;margin-bottom:12px;">👤 Відправник</div>
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;width:80px;">Ім'я:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#1a1008;padding:4px 0;font-weight:bold;">${name}</td>
-        </tr>
-        <tr>
-          <td style="font-family:Arial,sans-serif;font-size:13px;color:#7a6e5f;padding:4px 0;">Email:</td>
-          <td style="font-family:Arial,sans-serif;font-size:13px;padding:4px 0;">
-            ${email
-              ? `<a href="mailto:${email}" style="color:#c8922a;text-decoration:none;">${email}</a>`
-              : '<span style="color:#a09080;">не вказано</span>'
-            }
-          </td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- MESSAGE -->
-    <div style="margin-bottom:20px;">
-      <div style="font-family:'Georgia',serif;font-size:15px;color:#1a1008;font-weight:bold;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #c8922a;">
-        💬 Повідомлення
-      </div>
-      <div style="background-color:#fffdf8;border:1px solid #ede5d0;border-radius:8px;padding:20px;font-family:Arial,sans-serif;font-size:14px;color:#3d3020;line-height:1.8;white-space:pre-wrap;">
-${message}
-      </div>
-    </div>
-
-    <p style="font-family:Arial,sans-serif;font-size:12px;color:#a09080;text-align:center;margin:0;">
-      Повідомлення надіслано через форму зворотного зв'язку на сайті chytai-misto.ua
-    </p>
-  `;
-
-  return emailBaseTemplate(content);
+    return emailBase(`
+        <div style="background:linear-gradient(135deg,#4a6741,#6a8f60);border-radius:8px;padding:14px;margin-bottom:24px;text-align:center;color:#fff;font-family:Arial,sans-serif;font-size:13px;letter-spacing:2px;font-weight:bold;">✉️ НОВЕ ПОВІДОМЛЕННЯ З САЙТУ</div>
+        <div style="background:#f5f0e8;border-left:3px solid #c8922a;padding:16px;border-radius:0 8px 8px 0;margin-bottom:20px;font-family:Arial,sans-serif;font-size:13px;">
+            <div><strong>Ім'я:</strong> ${name}</div>
+            <div><strong>Email:</strong> ${email || '—'}</div>
+        </div>
+        <div style="background:#fffdf8;border:1px solid #ede5d0;border-radius:8px;padding:20px;font-family:Arial,sans-serif;font-size:14px;color:#3d3020;line-height:1.8;white-space:pre-wrap;">${message}</div>
+    `);
 }
 
-// ============================================
-// NODEMAILER — налаштування
-// ============================================
+// ─── Nodemailer ────────────────────────────
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS
-  }
+    service: 'gmail',
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS }
 });
 
 async function sendOrderEmails(order) {
-  // Лист адміну
-  await transporter.sendMail({
-    from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
-    subject: `📦 Нове замовлення ${order.order_number} від ${order.customer_name}`,
-    html: buildAdminOrderEmail(order)
-  });
-
-  // Лист клієнту (тільки якщо вказав email)
-  if (order.email) {
     await transporter.sendMail({
-      from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
-      to: order.email,
-      subject: `✅ Ваше замовлення ${order.order_number} прийнято — Читай-місто`,
-      html: buildClientOrderEmail(order)
+        from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+        to: process.env.ADMIN_EMAIL,
+        subject: `📦 Нове замовлення ${order.order_number} від ${order.customer_name}`,
+        html: buildAdminOrderEmail(order)
     });
-  }
+    if (order.email) {
+        await transporter.sendMail({
+            from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+            to: order.email,
+            subject: `✅ Замовлення ${order.order_number} прийнято — Читай-місто`,
+            html: buildClientOrderEmail(order)
+        });
+    }
 }
 
 // ============================================
-// 1. АВТОРИ
+//  AUTH ENDPOINTS
+// ============================================
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+        if (!name || !email || !password)
+            return res.status(400).json({ error: 'Заповніть усі поля' });
+        if (password.length < 6)
+            return res.status(400).json({ error: 'Пароль мінімум 6 символів' });
+
+        const count = await db.collection('users').countDocuments();
+        const role = count === 0 ? 'admin' : 'user';
+
+        const passwordHash = await bcrypt.hash(password, 12);
+        const result = await db.collection('users').insertOne({
+            name, email: email.toLowerCase(), passwordHash, role,
+            createdAt: new Date().toISOString()
+        });
+        const token = jwt.sign(
+            { userId: result.insertedId.toString(), email: email.toLowerCase(), name, role },
+            JWT_SECRET, { expiresIn: '7d' }
+        );
+        res.status(201).json({ token, user: { id: result.insertedId.toString(), name, email, role } });
+    } catch (err) {
+        if (err.code === 11000) return res.status(409).json({ error: 'Email вже зареєстровано' });
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password)
+            return res.status(400).json({ error: 'Введіть email та пароль' });
+
+        const user = await db.collection('users').findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(401).json({ error: 'Невірний email або пароль' });
+
+        const ok = await bcrypt.compare(password, user.passwordHash);
+        if (!ok) return res.status(401).json({ error: 'Невірний email або пароль' });
+
+        const token = jwt.sign(
+            { userId: user._id.toString(), email: user.email, name: user.name, role: user.role },
+            JWT_SECRET, { expiresIn: '7d' }
+        );
+        res.json({ token, user: { id: user._id.toString(), name: user.name, email: user.email, role: user.role } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+    try {
+        const user = await db.collection('users').findOne({ _id: new ObjectId(req.user.userId) });
+        if (!user) return res.status(404).json({ error: 'Користувача не знайдено' });
+        res.json({ id: user._id.toString(), name: user.name, email: user.email, role: user.role });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============================================
+//  АВТОРИ
 // ============================================
 app.get('/api/authors', async (req, res) => {
-  try {
-    const authors = await db.collection('authors').find().toArray();
-    res.json(authors.map(a => ({
-      author_id: a._id.toString(),
-      name: a.name,
-      biography: a.biography,
-      birth_year: a.birth_year,
-      country: a.country
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const authors = await db.collection('authors').find().toArray();
+        res.json(authors.map(a => ({
+            author_id: a._id.toString(), name: a.name,
+            biography: a.biography, birth_year: a.birth_year, country: a.country
+        })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/authors/:id', async (req, res) => {
-  try {
-    const author = await db.collection('authors').findOne({ _id: new ObjectId(req.params.id) });
-    if (!author) return res.json({ error: 'Автора не знайдено' });
-    res.json({
-      author_id: author._id.toString(),
-      name: author.name,
-      biography: author.biography,
-      birth_year: author.birth_year,
-      country: author.country
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const a = await db.collection('authors').findOne({ _id: new ObjectId(req.params.id) });
+        if (!a) return res.json({ error: 'Не знайдено' });
+        res.json({ author_id: a._id.toString(), name: a.name, biography: a.biography, birth_year: a.birth_year, country: a.country });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 2. ВИДАВНИЦТВА
+//  ВИДАВНИЦТВА
 // ============================================
 app.get('/api/publishers', async (req, res) => {
-  try {
-    const publishers = await db.collection('publishers').find().toArray();
-    res.json(publishers.map(p => ({
-      publisher_id: p._id.toString(),
-      name: p.name,
-      contact: p.contact,
-      website: p.website,
-      city: p.city
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const p = await db.collection('publishers').find().toArray();
+        res.json(p.map(x => ({ publisher_id: x._id.toString(), name: x.name, contact: x.contact, website: x.website, city: x.city })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/publishers/:id', async (req, res) => {
-  try {
-    const publisher = await db.collection('publishers').findOne({ _id: new ObjectId(req.params.id) });
-    if (!publisher) return res.json({ error: 'Видавництво не знайдено' });
-    res.json({
-      publisher_id: publisher._id.toString(),
-      name: publisher.name,
-      contact: publisher.contact,
-      website: publisher.website,
-      city: publisher.city
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const p = await db.collection('publishers').findOne({ _id: new ObjectId(req.params.id) });
+        if (!p) return res.json({ error: 'Не знайдено' });
+        res.json({ publisher_id: p._id.toString(), name: p.name, contact: p.contact, website: p.website, city: p.city });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 3. КАТЕГОРІЇ
+//  КАТЕГОРІЇ
 // ============================================
 app.get('/api/categories', async (req, res) => {
-  try {
-    const categories = await db.collection('categories').find().toArray();
-    res.json(categories.map(c => ({
-      category_id: c._id.toString(),
-      name: c.name,
-      description: c.description
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const cats = await db.collection('categories').find().toArray();
+        res.json(cats.map(c => ({ category_id: c._id.toString(), name: c.name, description: c.description })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/categories/:id', async (req, res) => {
-  try {
-    const category = await db.collection('categories').findOne({ _id: new ObjectId(req.params.id) });
-    if (!category) return res.json({ error: 'Категорію не знайдено' });
-    res.json({
-      category_id: category._id.toString(),
-      name: category.name,
-      description: category.description
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const c = await db.collection('categories').findOne({ _id: new ObjectId(req.params.id) });
+        if (!c) return res.json({ error: 'Не знайдено' });
+        res.json({ category_id: c._id.toString(), name: c.name, description: c.description });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 4. КЛІЄНТИ
+//  КЛІЄНТИ
 // ============================================
-app.get('/api/customers', async (req, res) => {
-  try {
-    const customers = await db.collection('customers').find().toArray();
-    res.json(customers.map(c => ({
-      customer_id: c._id.toString(),
-      full_name: c.full_name,
-      email: c.email,
-      phone: c.phone,
-      delivery_address: c.delivery_address,
-      registration_date: c.registration_date,
-      total_orders: c.total_orders
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/customers/:id', async (req, res) => {
-  try {
-    const customer = await db.collection('customers').findOne({ _id: new ObjectId(req.params.id) });
-    if (!customer) return res.json({ error: 'Клієнта не знайдено' });
-    res.json({
-      customer_id: customer._id.toString(),
-      full_name: customer.full_name,
-      email: customer.email,
-      phone: customer.phone,
-      delivery_address: customer.delivery_address,
-      registration_date: customer.registration_date,
-      total_orders: customer.total_orders
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/customers', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const list = await db.collection('customers').find().toArray();
+        res.json(list.map(c => ({
+            customer_id: c._id.toString(), full_name: c.full_name, email: c.email,
+            phone: c.phone, delivery_address: c.delivery_address,
+            registration_date: c.registration_date, total_orders: c.total_orders
+        })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 5. КНИГИ — ГОЛОВНИЙ СПИСОК
+//  КНИГИ — GET (публічні)
 // ============================================
 app.get('/api/books', async (req, res) => {
-  try {
-    const books = await db.collection('books').find().toArray();
-    const authors = await db.collection('authors').find().toArray();
-    const authorMap = {};
-    authors.forEach(a => { authorMap[a._id.toString()] = a.name; });
+    try {
+        const books = await db.collection('books').find().toArray();
+        const authors = await db.collection('authors').find().toArray();
+        const aMap = {};
+        authors.forEach(a => { aMap[a._id.toString()] = a.name; });
 
-    const result = books.map(book => ({
-      book_id: book._id.toString(),
-      title: book.title,
-      author: authorMap[book.author_id?.toString()] || 'Невідомий автор',
-      price: book.price,
-      stock: book.stock,
-      category: book.category_ids ? 'Категорії' : '',
-      year: book.year,
-      isbn: book.isbn
-    }));
-
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        res.json(books.map(b => ({
+            book_id: b._id.toString(),
+            title: b.title,
+            author: aMap[b.author_id?.toString()] || b.author || 'Невідомий автор',
+            price: b.price,
+            stock: b.stock,
+            year: b.year,
+            isbn: b.isbn,
+            imageUrl: b.imageUrl || ''
+        })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============================================
-// 5b. ПОШУК КНИГ
-// ============================================
 app.get('/api/books/search/:query', async (req, res) => {
-  try {
-    const q = req.params.query.toLowerCase();
-    const books = await db.collection('books').find().toArray();
-    const authors = await db.collection('authors').find().toArray();
-    const authorMap = {};
-    authors.forEach(a => { authorMap[a._id.toString()] = a.name; });
+    try {
+        const q = req.params.query.toLowerCase();
+        const books = await db.collection('books').find().toArray();
+        const auth = await db.collection('authors').find().toArray();
+        const aMap = {};
+        auth.forEach(a => { aMap[a._id.toString()] = a.name; });
 
-    const results = books.filter(b => {
-      const titleMatch = b.title.toLowerCase().includes(q);
-      const authorName = authorMap[b.author_id?.toString()] || '';
-      const authorMatch = authorName.toLowerCase().includes(q);
-      return titleMatch || authorMatch;
-    });
-
-    res.json({
-      query: q,
-      count: results.length,
-      results: results.map(b => ({
-        book_id: b._id.toString(),
-        title: b.title,
-        author: authorMap[b.author_id?.toString()] || '',
-        price: b.price,
-        stock: b.stock
-      }))
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        const results = books.filter(b => {
+            const t = b.title.toLowerCase();
+            const an = (aMap[b.author_id?.toString()] || b.author || '').toLowerCase();
+            return t.includes(q) || an.includes(q);
+        });
+        res.json({
+            query: q, count: results.length,
+            results: results.map(b => ({
+                book_id: b._id.toString(), title: b.title,
+                author: aMap[b.author_id?.toString()] || b.author || '',
+                price: b.price, stock: b.stock, imageUrl: b.imageUrl || ''
+            }))
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============================================
-// 5c. ОДНА КНИГА З ДЕТАЛЯМИ
-// ============================================
 app.get('/api/books/:id', async (req, res) => {
-  try {
-    const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
-    if (!book) return res.json({ error: 'Книгу не знайдено' });
+    try {
+        const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+        if (!book) return res.json({ error: 'Книгу не знайдено' });
 
-    const author = book.author_id ? await db.collection('authors').findOne({ _id: book.author_id }) : null;
-    const publisher = book.publisher_id ? await db.collection('publishers').findOne({ _id: book.publisher_id }) : null;
-    const categories = book.category_ids?.length
-      ? await db.collection('categories').find({ _id: { $in: book.category_ids } }).toArray()
-      : [];
+        const author = book.author_id ? await db.collection('authors').findOne({ _id: book.author_id }) : null;
+        const publisher = book.publisher_id ? await db.collection('publishers').findOne({ _id: book.publisher_id }) : null;
+        const cats = book.category_ids?.length
+            ? await db.collection('categories').find({ _id: { $in: book.category_ids } }).toArray()
+            : [];
 
-    res.json({
-      book_id: book._id.toString(),
-      title: book.title,
-      price: book.price,
-      purchase_price: book.purchase_price,
-      stock: book.stock,
-      isbn: book.isbn,
-      year: book.year,
-      pages: book.pages,
-      description: book.description,
-      author: author ? {
-        author_id: author._id.toString(),
-        name: author.name,
-        biography: author.biography,
-        birth_year: author.birth_year,
-        country: author.country
-      } : null,
-      publisher: publisher ? {
-        publisher_id: publisher._id.toString(),
-        name: publisher.name,
-        city: publisher.city,
-        website: publisher.website
-      } : null,
-      categories: categories.map(c => ({
-        category_id: c._id.toString(),
-        name: c.name
-      }))
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        res.json({
+            book_id: book._id.toString(),
+            title: book.title,
+            price: book.price,
+            purchase_price: book.purchase_price,
+            stock: book.stock,
+            isbn: book.isbn,
+            year: book.year,
+            pages: book.pages,
+            description: book.description,
+            imageUrl: book.imageUrl || '',
+            author: author ? { author_id: author._id.toString(), name: author.name, biography: author.biography, birth_year: author.birth_year, country: author.country } : null,
+            publisher: publisher ? { publisher_id: publisher._id.toString(), name: publisher.name, city: publisher.city, website: publisher.website } : null,
+            categories: cats.map(c => ({ category_id: c._id.toString(), name: c.name }))
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 5d. ПОПОВНЕННЯ СКЛАДУ (для менеджера)
+//  КНИГИ — CRUD (тільки admin)
 // ============================================
-app.patch('/api/books/:id/stock', async (req, res) => {
-  try {
-    const { quantity } = req.body;
+function validateBook(data) {
+    const errors = [];
+    if (!data.title || String(data.title).trim().length < 2) errors.push('Назва книги обов\'язкова (мін. 2 символи)');
+    if (!data.price || isNaN(Number(data.price)) || Number(data.price) <= 0) errors.push('Ціна має бути числом > 0');
+    if (data.stock !== undefined && (isNaN(Number(data.stock)) || Number(data.stock) < 0)) errors.push('Кількість не може бути від\'ємною');
+    if (data.year && (isNaN(Number(data.year)) || Number(data.year) < 1000 || Number(data.year) > 2100)) errors.push('Рік має бути від 1000 до 2100');
+    if (data.pages && (isNaN(Number(data.pages)) || Number(data.pages) < 1)) errors.push('Кількість сторінок має бути > 0');
+    return errors;
+}
 
-    if (typeof quantity !== 'number' || quantity === 0) {
-      return res.status(400).json({ error: 'Вкажіть кількість (число, не нуль)' });
-    }
+app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        const body = req.body;
+        const errors = validateBook(body);
+        if (errors.length) {
+            return res.status(400).json({ error: errors.join('; ') });
+        }
 
-    const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
-    if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+        const doc = {
+            title: String(body.title).trim(),
+            author: String(body.author || '').trim(),
+            price: Number(body.price),
+            purchase_price: body.purchase_price ? Number(body.purchase_price) : undefined,
+            stock: body.stock !== undefined ? Number(body.stock) : 0,
+            isbn: body.isbn || '',
+            year: body.year ? Number(body.year) : undefined,
+            pages: body.pages ? Number(body.pages) : undefined,
+            description: body.description || '',
+            imageUrl: req.file ? req.file.path : (body.imageUrl || ''),
+            createdAt: new Date().toISOString()
+        };
+        if (body.author_id) {
+            try { doc.author_id = new ObjectId(body.author_id); } catch { }
+        }
 
-    const newStock = book.stock + quantity;
-    if (newStock < 0) {
-      return res.status(400).json({
-        error: `Неможливо зменшити склад: зараз ${book.stock} шт, ви намагаєтесь зняти ${Math.abs(quantity)} шт`
-      });
-    }
+        const result = await db.collection('books').insertOne(doc);
+        res.status(201).json({ message: 'Книгу додано', book_id: result.insertedId.toString(), ...doc });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-    await db.collection('books').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $inc: { stock: quantity } }
-    );
+app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        const body = req.body;
+        const errors = validateBook(body);
+        if (errors.length) {
+            return res.status(400).json({ error: errors.join('; ') });
+        }
 
-    res.json({
-      message: 'Склад оновлено',
-      book_id: req.params.id,
-      title: book.title,
-      old_stock: book.stock,
-      change: quantity > 0 ? `+${quantity}` : `${quantity}`,
-      new_stock: newStock
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        const existing = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+        if (!existing) return res.status(404).json({ error: 'Книгу не знайдено' });
+
+        const update = {
+            title: String(body.title).trim(),
+            author: String(body.author || '').trim(),
+            price: Number(body.price),
+            purchase_price: body.purchase_price ? Number(body.purchase_price) : existing.purchase_price,
+            stock: body.stock !== undefined ? Number(body.stock) : existing.stock,
+            isbn: body.isbn || existing.isbn || '',
+            year: body.year ? Number(body.year) : existing.year,
+            pages: body.pages ? Number(body.pages) : existing.pages,
+            description: body.description !== undefined ? body.description : existing.description,
+            imageUrl: req.file ? req.file.path : (body.imageUrl || existing.imageUrl || ''),
+            updatedAt: new Date().toISOString()
+        };
+        if (body.author_id) {
+            try { update.author_id = new ObjectId(body.author_id); } catch { }
+        }
+
+        await db.collection('books').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });
+        res.json({ message: 'Книгу оновлено', book_id: req.params.id, ...update });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/books/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+        if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+        await db.collection('books').deleteOne({ _id: new ObjectId(req.params.id) });
+        res.json({ message: 'Книгу видалено', book_id: req.params.id, title: book.title });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/books/:id/stock', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { quantity } = req.body;
+        if (typeof quantity !== 'number' || quantity === 0)
+            return res.status(400).json({ error: 'Вкажіть кількість (не нуль)' });
+
+        const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+        if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+        const newStock = book.stock + quantity;
+        if (newStock < 0)
+            return res.status(400).json({ error: `Недостатньо на складі: ${book.stock} шт` });
+
+        await db.collection('books').updateOne({ _id: new ObjectId(req.params.id) }, { $inc: { stock: quantity } });
+        res.json({ message: 'Склад оновлено', old_stock: book.stock, new_stock: newStock });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 6. ЗАМОВЛЕННЯ
+//  ЗАМОВЛЕННЯ
 // ============================================
-app.get('/api/orders', async (req, res) => {
-  try {
-    const orders = await db.collection('orders').find().toArray();
-    res.json(orders.map(o => ({
-      order_id: o._id.toString(),
-      ...o,
-      _id: undefined
-    })));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/orders', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const orders = await db.collection('orders').find().sort({ order_date: -1 }).toArray();
+        res.json(orders.map(o => ({ order_id: o._id.toString(), ...o, _id: undefined })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/orders/:id', async (req, res) => {
-  try {
-    const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
-    if (!order) return res.json({ error: 'Замовлення не знайдено' });
-    res.json({
-      order_id: order._id.toString(),
-      ...order,
-      _id: undefined
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/orders/my', authMiddleware, async (req, res) => {
+    try {
+        const orders = await db.collection('orders')
+            .find({ user_id: req.user.userId })
+            .sort({ order_date: -1 })
+            .toArray();
+        res.json(orders.map(o => ({ order_id: o._id.toString(), ...o, _id: undefined })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/orders/:id', authMiddleware, async (req, res) => {
+    try {
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
+        if (!order) return res.json({ error: 'Не знайдено' });
+        if (req.user.role !== 'admin' && order.user_id !== req.user.userId)
+            return res.status(403).json({ error: 'Доступ заборонено' });
+        res.json({ order_id: order._id.toString(), ...order, _id: undefined });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/orders', async (req, res) => {
-  try {
-    const { customer_id, items, delivery_address, payment_method, customer_name, phone, email } = req.body;
-
-    // ПЕРЕВІРКА НАЯВНОСТІ КНИГ НА СКЛАДІ
-    for (const item of (items || [])) {
-      let book;
-      try {
-        book = await db.collection('books').findOne({ _id: new ObjectId(item.book_id) });
-      } catch {
-        return res.status(400).json({ error: `Невірний ID книги: ${item.book_id}` });
-      }
-
-      if (!book) {
-        return res.status(400).json({ error: `Книгу "${item.title}" не знайдено` });
-      }
-
-      if (book.stock < item.quantity) {
-        if (book.stock === 0) {
-          return res.status(400).json({
-            error: `Книга "${item.title}" закінчилась на складі`
-          });
-        }
-        return res.status(400).json({
-          error: `Книга "${item.title}": доступно лише ${book.stock} шт, а ви замовили ${item.quantity} шт`
-        });
-      }
-    }
-
-    // ЗМЕНШУЄМО STOCK ДЛЯ КОЖНОЇ КНИГИ
-    for (const item of (items || [])) {
-      await db.collection('books').updateOne(
-        { _id: new ObjectId(item.book_id) },
-        { $inc: { stock: -item.quantity } }
-      );
-    }
-
-    // СТВОРЮЄМО ЗАМОВЛЕННЯ
-    const total = (items || []).reduce((s, i) => s + (i.price * i.quantity), 0);
-    const orderNumber = 'ORD-2026-' + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-
-    const newOrder = {
-      order_number: orderNumber,
-      customer_id: customer_id || 'guest',
-      customer_name: customer_name || 'Гість',
-      phone: phone || '',
-      email: email || '',
-      status: 'нове',
-      total_amount: total,
-      order_date: new Date().toISOString().split('T')[0],
-      items: items || [],
-      delivery_address: delivery_address || '',
-      payment_method: payment_method || 'готівка при отриманні',
-      payment_status: 'очікується'
-    };
-
-    const result = await db.collection('orders').insertOne(newOrder);
-
-    // Відправка email сповіщень
     try {
-      await sendOrderEmails(newOrder);
-      console.log('✅ Emails відправлено для замовлення', newOrder.order_number);
-    } catch (emailErr) {
-      console.warn('⚠️ Помилка відправки email:', emailErr.message);
-    }
+        const { customer_id, items, delivery_address, payment_method, customer_name, phone, email } = req.body;
 
-    res.status(201).json({
-      message: 'Замовлення створено',
-      order: { ...newOrder, order_id: result.insertedId.toString() }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        let userId = null;
+        const authHeader = req.headers.authorization || '';
+        if (authHeader.startsWith('Bearer ')) {
+            try {
+                const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
+                userId = decoded.userId;
+            } catch { }
+        }
+
+        for (const item of (items || [])) {
+            let book;
+            try { book = await db.collection('books').findOne({ _id: new ObjectId(item.book_id) }); }
+            catch { return res.status(400).json({ error: `Невірний ID: ${item.book_id}` }); }
+
+            if (!book) return res.status(400).json({ error: `Книгу "${item.title}" не знайдено` });
+            if (book.stock < item.quantity) {
+                return res.status(400).json({
+                    error: book.stock === 0
+                        ? `Книга "${item.title}" закінчилась на складі`
+                        : `"${item.title}": доступно ${book.stock} шт, замовлено ${item.quantity}`
+                });
+            }
+        }
+
+        for (const item of (items || [])) {
+            await db.collection('books').updateOne(
+                { _id: new ObjectId(item.book_id) },
+                { $inc: { stock: -item.quantity } }
+            );
+        }
+
+        const total = (items || []).reduce((s, i) => s + i.price * i.quantity, 0);
+        const orderNumber = 'ORD-2026-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+
+        const newOrder = {
+            order_number: orderNumber,
+            user_id: userId,
+            customer_id: customer_id || 'guest',
+            customer_name: customer_name || 'Гість',
+            phone: phone || '',
+            email: email || '',
+            status: 'нове',
+            total_amount: total,
+            order_date: new Date().toISOString().split('T')[0],
+            items: items || [],
+            delivery_address: delivery_address || '',
+            payment_method: payment_method || 'готівка при отриманні',
+            payment_status: 'очікується'
+        };
+
+        const result = await db.collection('orders').insertOne(newOrder);
+
+        try { await sendOrderEmails(newOrder); }
+        catch (e) { console.warn('⚠️ Email:', e.message); }
+
+        res.status(201).json({
+            message: 'Замовлення створено',
+            order: { ...newOrder, order_id: result.insertedId.toString() }
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+const ALLOWED_STATUSES = ['нове', 'в обробці', 'підтверджено', 'передано в доставку', 'доставлено', 'скасовано'];
+
+app.patch('/api/orders/:id/status', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!ALLOWED_STATUSES.includes(status))
+            return res.status(400).json({ error: `Допустимі статуси: ${ALLOWED_STATUSES.join(', ')}` });
+
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
+        if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
+
+        await db.collection('orders').updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: { status, updatedAt: new Date().toISOString() } }
+        );
+        res.json({ message: 'Статус оновлено', order_id: req.params.id, status });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 7. ВІДГУКИ
+//  ВІДГУКИ
 // ============================================
-app.get('/api/reviews', async (req, res) => {
-  try {
-    const reviews = await db.collection('reviews').find().toArray();
-    res.json(reviews);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/reviews/all', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const reviews = await db.collection('reviews').find().sort({ created_at: -1 }).toArray();
+
+        const bookIds = [...new Set(reviews.map(r => r.book_id?.toString()).filter(Boolean))];
+        const books = bookIds.length
+            ? await db.collection('books').find({
+                _id: { $in: bookIds.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) }
+            }).toArray()
+            : [];
+        const bookMap = {};
+        books.forEach(b => { bookMap[b._id.toString()] = b.title; });
+
+        const customers = await db.collection('customers').find().toArray();
+        const users = await db.collection('users').find().toArray();
+        const cMap = {};
+        customers.forEach(c => { cMap[c._id.toString()] = c.full_name; });
+        users.forEach(u => { cMap[u._id.toString()] = u.name; });
+
+        res.json(reviews.map(r => ({
+            review_id: r._id.toString(),
+            book_id: r.book_id?.toString() || '',
+            book_title: bookMap[r.book_id?.toString()] || '—',
+            customer: cMap[r.customer_id?.toString()] || r.customer_name || 'Покупець',
+            rating: r.rating,
+            comment: r.comment,
+            date: r.date || r.created_at?.split('T')[0] || ''
+        })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/reviews/book/:bookId', async (req, res) => {
-  try {
-    const bookOid = new ObjectId(req.params.bookId);
-    const reviews = await db.collection('reviews').find({ book_id: bookOid }).toArray();
-    const customers = await db.collection('customers').find().toArray();
-    const customerMap = {};
-    customers.forEach(c => { customerMap[c._id.toString()] = c.full_name; });
+    try {
+        let bookOid;
+        try { bookOid = new ObjectId(req.params.bookId); }
+        catch { return res.status(400).json({ error: 'Невірний ID книги' }); }
 
-    const enriched = reviews.map(r => ({
-      customer: customerMap[r.customer_id?.toString()] || 'Покупець',
-      rating: r.rating,
-      comment: r.comment,
-      date: r.date || r.created_at?.split('T')[0] || ''
-    }));
+        const reviews = await db.collection('reviews').find({ book_id: bookOid }).sort({ created_at: -1 }).toArray();
+        const customers = await db.collection('customers').find().toArray();
+        const users = await db.collection('users').find().toArray();
+        const cMap = {};
+        customers.forEach(c => { cMap[c._id.toString()] = c.full_name; });
+        users.forEach(u => { cMap[u._id.toString()] = u.name; });
 
-    const avgRating = enriched.length
-      ? enriched.reduce((s, r) => s + r.rating, 0) / enriched.length
-      : 0;
+        const enriched = reviews.map(r => ({
+            review_id: r._id.toString(),
+            customer: cMap[r.customer_id?.toString()] || r.customer_name || 'Покупець',
+            rating: r.rating,
+            comment: r.comment,
+            date: r.date || r.created_at?.split('T')[0] || ''
+        }));
+        const avg = enriched.length ? enriched.reduce((s, r) => s + r.rating, 0) / enriched.length : 0;
+        res.json({ book_id: req.params.bookId, average_rating: avg, total_reviews: enriched.length, reviews: enriched });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
-    res.json({
-      book_id: req.params.bookId,
-      average_rating: avgRating,
-      total_reviews: enriched.length,
-      reviews: enriched
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.post('/api/reviews', authMiddleware, async (req, res) => {
+    try {
+        const { book_id, rating, comment } = req.body;
+
+        if (!book_id) return res.status(400).json({ error: 'Вкажіть book_id' });
+        if (!rating || rating < 1 || rating > 5)
+            return res.status(400).json({ error: 'Оцінка має бути від 1 до 5' });
+        if (!comment || String(comment).trim().length < 3)
+            return res.status(400).json({ error: 'Відгук занадто короткий (мін. 3 символи)' });
+
+        let bookOid;
+        try { bookOid = new ObjectId(book_id); }
+        catch { return res.status(400).json({ error: 'Невірний ID книги' }); }
+
+        const book = await db.collection('books').findOne({ _id: bookOid });
+        if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+
+        const userId = req.user.userId;
+        const existing = await db.collection('reviews').findOne({
+            book_id: bookOid,
+            customer_id: new ObjectId(userId)
+        });
+        if (existing) return res.status(409).json({ error: 'Ви вже залишали відгук на цю книгу' });
+
+        const doc = {
+            book_id: bookOid,
+            customer_id: new ObjectId(userId),
+            customer_name: req.user.name,
+            rating: Number(rating),
+            comment: String(comment).trim(),
+            created_at: new Date().toISOString(),
+            date: new Date().toISOString().split('T')[0]
+        };
+
+        const result = await db.collection('reviews').insertOne(doc);
+        res.status(201).json({
+            message: 'Відгук додано',
+            review_id: result.insertedId.toString(),
+            ...doc,
+            book_id: book_id,
+            customer_id: userId
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/reviews/:id', authMiddleware, async (req, res) => {
+    try {
+        let reviewOid;
+        try { reviewOid = new ObjectId(req.params.id); }
+        catch { return res.status(400).json({ error: 'Невірний ID відгуку' }); }
+
+        const review = await db.collection('reviews').findOne({ _id: reviewOid });
+        if (!review) return res.status(404).json({ error: 'Відгук не знайдено' });
+
+        const isAdmin = req.user.role === 'admin';
+        const isOwner = review.customer_id?.toString() === req.user.userId;
+        if (!isAdmin && !isOwner)
+            return res.status(403).json({ error: 'Немає прав для видалення цього відгуку' });
+
+        await db.collection('reviews').deleteOne({ _id: reviewOid });
+        res.json({ message: 'Відгук видалено', review_id: req.params.id });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/reviews', async (req, res) => {
+    try {
+        const reviews = await db.collection('reviews').find().sort({ created_at: -1 }).toArray();
+        res.json(reviews.map(r => ({ review_id: r._id.toString(), ...r, _id: undefined })));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ============================================
-// 8. СКЛАД
+//  СКЛАД / СТАТИСТИКА / КОНТАКТИ
 // ============================================
-app.get('/api/inventory', async (req, res) => {
-  try {
-    const inventory = await db.collection('inventory').find().toArray();
-    res.json(inventory);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.get('/api/inventory', authMiddleware, requireRole('admin'), async (req, res) => {
+    try { res.json(await db.collection('inventory').find().toArray()); }
+    catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============================================
-// 9. СТАТИСТИКА
-// ============================================
 app.get('/api/stats', async (req, res) => {
-  try {
-    const [totalBooks, totalCustomers, totalOrders, totalReviews] = await Promise.all([
-      db.collection('books').countDocuments(),
-      db.collection('customers').countDocuments(),
-      db.collection('orders').countDocuments(),
-      db.collection('reviews').countDocuments()
-    ]);
-
-    const orders = await db.collection('orders').find({ payment_status: 'оплачено' }).toArray();
-    const totalRevenue = orders.reduce((s, o) => s + (o.total_amount || 0), 0);
-
-    res.json({
-      total_books: totalBooks,
-      total_customers: totalCustomers,
-      total_orders: totalOrders,
-      total_reviews: totalReviews,
-      total_revenue: totalRevenue,
-      inventory_operations: 12
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const [totalBooks, totalCustomers, totalOrders, totalReviews] = await Promise.all([
+            db.collection('books').countDocuments(),
+            db.collection('customers').countDocuments(),
+            db.collection('orders').countDocuments(),
+            db.collection('reviews').countDocuments()
+        ]);
+        const paidOrders = await db.collection('orders').find({ payment_status: 'оплачено' }).toArray();
+        const totalRevenue = paidOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+        res.json({ total_books: totalBooks, total_customers: totalCustomers, total_orders: totalOrders, total_reviews: totalReviews, total_revenue: totalRevenue });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============================================
-// 10. ФОРМА КОНТАКТІВ
-// ============================================
 app.post('/api/contact', async (req, res) => {
-  try {
-    const { name, email, message } = req.body;
-    if (!name || !message) return res.status(400).json({ error: 'Заповніть усі поля' });
-
-    await transporter.sendMail({
-      from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL,
-      subject: `✉️ Нове повідомлення від ${name} — Читай-місто`,
-      html: buildContactEmail(name, email, message)
-    });
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const { name, email, message } = req.body;
+        if (!name || !message) return res.status(400).json({ error: 'Заповніть усі поля' });
+        await transporter.sendMail({
+            from: `"Читай-місто" <${process.env.GMAIL_USER}>`,
+            to: process.env.ADMIN_EMAIL,
+            subject: `✉️ Повідомлення від ${name} — Читай-місто`,
+            html: buildContactEmail(name, email, message)
+        });
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============================================
-// API HEALTH CHECK
-// ============================================
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', db: !!db, port: PORT });
-});
+app.get('/api/health', (req, res) => res.json({ status: 'ok', db: !!db, port: PORT }));
+
+// Fallback
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ============================================
-// ГОЛОВНА СТОРІНКА (має бути ОСТАННІМ)
-// ============================================
-app.get('*', (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
-});
-
-// ============================================
-// ЗАПУСК СЕРВЕРА
+//  ЗАПУСК
 // ============================================
 async function startServer() {
-  await connectDB();
-  app.listen(PORT, () => {
-    console.log('============================================');
-    console.log('Сервер книгарні "Читай-місто" запущено!');
-    console.log(`Порт: ${PORT}`);
-    console.log(`Адреса: http://localhost:${PORT}`);
-    console.log(`API: http://localhost:${PORT}/api/books`);
-    console.log('============================================');
-  });
+    await connectDB();
+    app.listen(PORT, () => {
+        console.log('════════════════════════════════════');
+        console.log('  📚 Читай-місто — сервер запущено');
+        console.log(`  http://localhost:${PORT}`);
+        console.log('════════════════════════════════════');
+    });
 }
-
 startServer();

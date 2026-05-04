@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: readcity_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret123
+      MONGO_INITDB_DATABASE: bookstore_crm
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - readcity_net
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: readcity_mongo_express
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: secret123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:secret123@mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    networks:
+      - readcity_net
+
+volumes:
+  mongo_data:
+
+networks:
+  readcity_net:
