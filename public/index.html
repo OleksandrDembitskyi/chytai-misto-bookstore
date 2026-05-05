@@ -153,7 +153,6 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .stars-input span{font-size:1.6rem;cursor:pointer;color:var(--parchment);transition:color .15s,transform .15s}
 .stars-input span.active,.stars-input span:hover{color:var(--gold);transform:scale(1.1)}
 .review-text{font-size:.85rem;line-height:1.6;margin-top:.5rem}
-/* ── ФІКС: кнопка видалення відгуку — внизу, не зверху ── */
 .review-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:.75rem;padding-top:.6rem;border-top:1px solid var(--parchment)}
 .review-delete-btn{background:none;border:1px solid rgba(139,58,30,.25);cursor:pointer;font-size:.72rem;color:var(--muted);padding:.3rem .7rem;border-radius:4px;font-family:'Montserrat',sans-serif;font-weight:500;transition:background .2s,color .2s,border-color .2s;display:flex;align-items:center;gap:.3rem}
 .review-delete-btn:hover{background:rgba(139,58,30,.1);color:var(--rust);border-color:var(--rust)}
@@ -261,7 +260,7 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .stock-badge{display:inline-block;background:rgba(74,103,65,.12);color:var(--sage);border-radius:4px;padding:.1rem .5rem;font-size:.72rem;font-weight:700}
 .stock-badge.low{background:rgba(139,58,30,.1);color:var(--rust)}
 
-/* ─── CATEGORIES CHECKBOXES IN FORMS ─ */
+/* ─── CATEGORIES / AUTHORS CHECKBOXES IN FORMS ─ */
 .cats-check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.4rem;max-height:160px;overflow-y:auto;border:1.5px solid var(--parchment);border-radius:6px;padding:.6rem;background:var(--cream)}
 .cats-check-grid label{display:flex;align-items:center;gap:.4rem;font-size:.78rem;cursor:pointer;padding:.2rem .3rem;border-radius:4px;transition:background .15s}
 .cats-check-grid label:hover{background:rgba(200,146,42,.08)}
@@ -305,6 +304,10 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 /* ─── STATUS SELECT ───────────────── */
 .status-select{border:1.5px solid var(--parchment);border-radius:6px;padding:.35rem .6rem;font-size:.75rem;font-family:'Montserrat',sans-serif;background:var(--cream);color:var(--ink);cursor:pointer}
 .status-select:focus{outline:none;border-color:var(--gold)}
+
+/* ─── PUBLISHER CARD (contacts) ───── */
+.publisher-card{background:var(--parchment);border-radius:6px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.8rem}
+.publisher-card strong{display:block;margin-bottom:.15rem}
 
 /* ─── MISC ────────────────────────── */
 .loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--muted)}
@@ -376,10 +379,11 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         <button class="btn-primary" onclick="showPage('catalog')">Перейти до каталогу</button>
         <button class="btn-outline" onclick="scrollToSection('featured')">Рекомендовані</button>
       </div>
+      <!-- stats оновлюються динамічно з /api/stats -->
       <div class="hero-stats" id="heroStats">
-        <div class="stat"><div class="stat-num">—</div><div class="stat-label">Книг</div></div>
-        <div class="stat"><div class="stat-num">5</div><div class="stat-label">Авторів</div></div>
-        <div class="stat"><div class="stat-num">10</div><div class="stat-label">Категорій</div></div>
+        <div class="stat"><div class="stat-num" id="statBooks">—</div><div class="stat-label">Книг</div></div>
+        <div class="stat"><div class="stat-num" id="statAuthors">—</div><div class="stat-label">Авторів</div></div>
+        <div class="stat"><div class="stat-num" id="statCats">—</div><div class="stat-label">Категорій</div></div>
       </div>
     </div>
   </div>
@@ -406,7 +410,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <div class="section-header">
         <div class="section-title">Наші <span>автори</span></div>
       </div>
-      <!-- горизонтальний скрол для авторів -->
       <div class="authors-scroll" id="homeAuthors">
         <div class="loading"><div class="spinner"></div></div>
       </div>
@@ -595,6 +598,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <button class="admin-tab" onclick="switchAdminTab('reviews')">💬 Відгуки</button>
       <button class="admin-tab" onclick="switchAdminTab('authors')">✍️ Автори</button>
       <button class="admin-tab" onclick="switchAdminTab('categories')">🏷️ Категорії</button>
+      <button class="admin-tab" onclick="switchAdminTab('publishers')">🏢 Видавництва</button>
       <button class="admin-tab" onclick="switchAdminTab('add-book')">➕ Додати книгу</button>
     </div>
 
@@ -639,9 +643,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
             <label class="form-label">Рік народження</label>
             <input type="number" class="form-input" id="aa-birth-year" placeholder="1814">
           </div>
-          <div class="form-group">
-            <!-- placeholder for grid alignment -->
-          </div>
+          <div class="form-group"></div>
           <div class="form-group full">
             <label class="form-label">Біографія</label>
             <textarea class="form-input" id="aa-biography" rows="3" placeholder="Короткі відомості про автора..." style="resize:vertical"></textarea>
@@ -666,9 +668,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
             <label class="form-label">Назва категорії *</label>
             <input type="text" class="form-input" id="ac-name" placeholder="Поезія">
           </div>
-          <div class="form-group">
-            <!-- placeholder -->
-          </div>
+          <div class="form-group"></div>
           <div class="form-group full">
             <label class="form-label">Опис</label>
             <textarea class="form-input" id="ac-description" rows="2" placeholder="Короткий опис категорії..." style="resize:vertical"></textarea>
@@ -684,6 +684,38 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       </div>
     </div>
 
+    <!-- ════ PUBLISHERS MANAGEMENT (НОВИЙ ТАБ) ════ -->
+    <div id="adminPublishers" class="admin-section">
+      <div class="admin-card">
+        <h3>➕ Додати видавництво</h3>
+        <div class="add-book-form">
+          <div class="form-group">
+            <label class="form-label">Назва видавництва *</label>
+            <input type="text" class="form-input" id="ap-name" placeholder="Видавництво «Основи»">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Місто</label>
+            <input type="text" class="form-input" id="ap-city" placeholder="Київ">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Веб-сайт</label>
+            <input type="text" class="form-input" id="ap-website" placeholder="https://osnovy.com.ua">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Контакт (email / телефон)</label>
+            <input type="text" class="form-input" id="ap-contact" placeholder="info@osnovy.com.ua">
+          </div>
+          <div class="form-group full">
+            <button class="btn-primary" onclick="submitAddPublisher()" style="width:240px">Додати видавництво</button>
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>Список видавництв</h3>
+        <div id="adminPublishersTable"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
     <!-- ADD BOOK FORM -->
     <div id="adminAddBook" class="admin-section">
       <div class="admin-card">
@@ -695,7 +727,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
           </div>
           <div class="form-group">
             <label class="form-label">Автор *</label>
-            <!-- select замість text input -->
             <select class="form-select" id="ab-author-select">
               <option value="">— оберіть автора —</option>
             </select>
@@ -725,6 +756,14 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
             <label class="form-label">Закупівельна ціна</label>
             <input type="number" class="form-input" id="ab-purchase-price" placeholder="150">
           </div>
+          <!-- ВИДАВНИЦТВО у формі книги -->
+          <div class="form-group">
+            <label class="form-label">Видавництво</label>
+            <select class="form-select" id="ab-publisher-select">
+              <option value="">— оберіть видавництво —</option>
+            </select>
+          </div>
+          <div class="form-group"></div>
           <div class="form-group full">
             <label class="form-label">Категорії книги</label>
             <div class="cats-check-grid" id="ab-cats-grid">
@@ -760,8 +799,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <button class="modal-tab"        id="tabRegister" onclick="switchAuthTab('register')">Реєстрація</button>
     </div>
     <div class="auth-error" id="authError"></div>
-
-    <!-- LOGIN -->
     <div class="modal-form-section active" id="formLogin">
       <div class="form-group" style="margin-bottom:1rem">
         <label class="form-label">Email</label>
@@ -773,8 +810,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       </div>
       <button class="btn-primary" style="width:100%" onclick="doLogin()">Увійти</button>
     </div>
-
-    <!-- REGISTER -->
     <div class="modal-form-section" id="formRegister">
       <div class="form-group" style="margin-bottom:1rem">
         <label class="form-label">Ім'я</label>
@@ -835,6 +870,14 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         <label class="form-label">Закупівельна ціна</label>
         <input type="number" class="form-input" id="eb-purchase-price">
       </div>
+      <!-- ВИДАВНИЦТВО у формі редагування книги -->
+      <div class="form-group">
+        <label class="form-label">Видавництво</label>
+        <select class="form-select" id="eb-publisher-select">
+          <option value="">— оберіть видавництво —</option>
+        </select>
+      </div>
+      <div class="form-group"></div>
       <div class="form-group full">
         <label class="form-label">Категорії книги</label>
         <div class="cats-check-grid" id="eb-cats-grid">
@@ -855,6 +898,32 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         <button class="btn-primary" onclick="submitEditBook()" style="width:200px">Зберегти зміни</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════ EDIT PUBLISHER MODAL ══════════════════ -->
+<div class="modal-overlay" id="editPublisherModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('editPublisherModal')">✕</button>
+    <h2>Редагувати видавництво</h2>
+    <input type="hidden" id="epu-id">
+    <div class="form-group" style="margin-bottom:1rem">
+      <label class="form-label">Назва *</label>
+      <input type="text" class="form-input" id="epu-name">
+    </div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label class="form-label">Місто</label>
+      <input type="text" class="form-input" id="epu-city">
+    </div>
+    <div class="form-group" style="margin-bottom:1rem">
+      <label class="form-label">Веб-сайт</label>
+      <input type="text" class="form-input" id="epu-website">
+    </div>
+    <div class="form-group" style="margin-bottom:1.5rem">
+      <label class="form-label">Контакт</label>
+      <input type="text" class="form-input" id="epu-contact">
+    </div>
+    <button class="btn-primary" style="width:100%" onclick="submitEditPublisher()">Зберегти зміни</button>
   </div>
 </div>
 
@@ -935,9 +1004,10 @@ const API = '/api';
 let cart      = JSON.parse(localStorage.getItem('readcity_cart') || '[]');
 let authToken = localStorage.getItem('readcity_token') || null;
 let authUser  = JSON.parse(localStorage.getItem('readcity_user') || 'null');
-let allBooks  = [];
-let allCategories = [];
-let allAuthors    = [];
+let allBooks       = [];
+let allCategories  = [];
+let allAuthors     = [];
+let allPublishers  = [];
 let selectedPayment = 'card';
 let selectedReviewStars = 0;
 
@@ -958,9 +1028,7 @@ const bookImages = {
 async function apiFetch(path, opts = {}) {
   try {
     const headers = {};
-    if (!(opts.body instanceof FormData)) {
-      headers['Content-Type'] = 'application/json';
-    }
+    if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
     Object.assign(headers, opts.headers || {});
     if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
     const r = await fetch(API + path, { ...opts, headers });
@@ -968,23 +1036,18 @@ async function apiFetch(path, opts = {}) {
     return r.json();
   } catch (e) { console.warn('API:', e.message, path); return null; }
 }
-
 async function apiPost(path, data, opts = {}) {
   return apiFetch(path, { method: 'POST', body: JSON.stringify(data), ...opts });
 }
-
 async function apiPut(path, data) {
   return apiFetch(path, { method: 'PUT', body: JSON.stringify(data) });
 }
-
 async function apiPatch(path, data) {
   return apiFetch(path, { method: 'PATCH', body: JSON.stringify(data) });
 }
-
 async function apiDelete(path) {
   return apiFetch(path, { method: 'DELETE' });
 }
-
 async function apiFormData(method, path, formData) {
   try {
     const headers = {};
@@ -1003,19 +1066,15 @@ function showToast(msg, type = 'success') {
   t.className = 'toast ' + type + ' show';
   setTimeout(() => { t.className = 'toast'; }, 2800);
 }
-
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
 function showConfirm(title, text, onOk) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmText').textContent  = text;
   document.getElementById('confirmOkBtn').onclick = () => { closeModal('confirmModal'); onOk(); };
   openModal('confirmModal');
 }
-
 function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
-
 function previewImage(input, previewId) {
   const el = document.getElementById(previewId);
   if (input.files && input.files[0]) {
@@ -1032,7 +1091,6 @@ function openAuthModal(tab = 'login') {
   document.getElementById('authError').classList.remove('show');
   openModal('authModal');
 }
-
 function switchAuthTab(tab) {
   document.getElementById('formLogin').classList.toggle('active',    tab === 'login');
   document.getElementById('formRegister').classList.toggle('active', tab === 'register');
@@ -1041,13 +1099,11 @@ function switchAuthTab(tab) {
   document.getElementById('authModalTitle').textContent = tab === 'login' ? 'Вхід до кабінету' : 'Реєстрація';
   document.getElementById('authError').classList.remove('show');
 }
-
 function showAuthError(msg) {
   const el = document.getElementById('authError');
   el.textContent = msg;
   el.classList.add('show');
 }
-
 async function doLogin() {
   const email    = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -1059,7 +1115,6 @@ async function doLogin() {
   showToast(`Ласкаво просимо, ${result.user.name}!`);
   updateHeaderAuth();
 }
-
 async function doRegister() {
   const name     = document.getElementById('regName').value.trim();
   const email    = document.getElementById('regEmail').value.trim();
@@ -1072,24 +1127,20 @@ async function doRegister() {
   showToast(`Реєстрація успішна! Ласкаво просимо, ${result.user.name}!`);
   updateHeaderAuth();
 }
-
 function saveAuth(token, user) {
   authToken = token;
   authUser  = user;
   localStorage.setItem('readcity_token', token);
   localStorage.setItem('readcity_user',  JSON.stringify(user));
 }
-
 function logout() {
-  authToken = null;
-  authUser  = null;
+  authToken = null; authUser = null;
   localStorage.removeItem('readcity_token');
   localStorage.removeItem('readcity_user');
   updateHeaderAuth();
   showToast('Ви вийшли з акаунту');
   showPage('home');
 }
-
 function updateHeaderAuth() {
   const headerAuth = document.getElementById('headerAuth');
   const headerUser = document.getElementById('headerUser');
@@ -1134,7 +1185,6 @@ function getBookImageUrl(book) {
   if (book.imageUrl) return book.imageUrl;
   return bookImages[book.book_id] || '';
 }
-
 function bookCoverHTML(book, size) {
   const imgUrl = getBookImageUrl(book);
   const colors = ['#8b6914','#5a3e1b','#2c4a2e','#4a2040','#1e3a4a'];
@@ -1160,20 +1210,17 @@ function bookCoverHTML(book, size) {
       </div>
     </div>`;
 }
-
 function getAuthorName(book) {
   if (!book.author) return '';
   if (typeof book.author === 'string') return book.author;
   if (typeof book.author === 'object' && book.author.name) return book.author.name;
   return '';
 }
-
 function getStockInfo(stock) {
   if (stock === 0) return { label: 'Немає в наявності', cls: 'low' };
   if (stock <= 3)  return { label: `Лишилось ${stock} шт`, cls: 'low' };
   return { label: 'В наявності', cls: '' };
 }
-
 function bookCardHTML(book) {
   const stock = book.stock || 0;
   const { label, cls } = getStockInfo(stock);
@@ -1195,7 +1242,6 @@ function bookCardHTML(book) {
       </div>
     </div>`;
 }
-
 function renderBooksGrid(containerId, books) {
   const el = document.getElementById(containerId);
   if (!el) return;
@@ -1207,16 +1253,17 @@ function renderBooksGrid(containerId, books) {
 }
 
 // ════════════════════════════════════════════════════════
-//  HOME
+//  HOME  —  статистика тягнеться з /api/stats
 // ════════════════════════════════════════════════════════
 async function loadHome() {
+  // Статистика: реальні числа з БД
   const stats = await apiFetch('/stats');
   if (stats) {
-    document.getElementById('heroStats').innerHTML = `
-      <div class="stat"><div class="stat-num">${stats.total_books}</div><div class="stat-label">Книг</div></div>
-      <div class="stat"><div class="stat-num">5</div><div class="stat-label">Авторів</div></div>
-      <div class="stat"><div class="stat-num">10</div><div class="stat-label">Категорій</div></div>`;
+    document.getElementById('statBooks').textContent   = stats.total_books   ?? '—';
+    document.getElementById('statAuthors').textContent = stats.total_authors  ?? '—';
+    document.getElementById('statCats').textContent    = stats.total_categories ?? '—';
   }
+
   const cats = await apiFetch('/categories');
   allCategories = cats || [];
   if (cats) {
@@ -1311,7 +1358,6 @@ function changeQty(delta) {
   const inp = document.getElementById('detailQty');
   if (inp) inp.value = Math.max(1, parseInt(inp.value) + delta);
 }
-
 function addDetailToCart(bookId, title, author, price) {
   const qty = parseInt(document.getElementById('detailQty')?.value || 1);
   addToCart({ book_id: bookId, title, author, price }, qty);
@@ -1346,10 +1392,9 @@ function renderReviewAddSection(bookId) {
   }
 }
 
-function setInlineStar(val, bookId) {
+function setInlineStar(val) {
   window._inlineReviewStars = val;
-  const stars = document.querySelectorAll('#inlineStarsInput span');
-  stars.forEach(s => {
+  document.querySelectorAll('#inlineStarsInput span').forEach(s => {
     s.classList.toggle('active', parseInt(s.dataset.val) <= val);
   });
   const err = document.getElementById('inlineStarError');
@@ -1359,11 +1404,7 @@ function setInlineStar(val, bookId) {
 async function submitInlineReview(bookId) {
   const rating  = window._inlineReviewStars || 0;
   const comment = document.getElementById('inlineReviewText')?.value.trim();
-  if (!rating) {
-    const err = document.getElementById('inlineStarError');
-    if (err) err.style.display = 'block';
-    return;
-  }
+  if (!rating) { const err = document.getElementById('inlineStarError'); if (err) err.style.display = 'block'; return; }
   if (!comment) { showToast('Напишіть текст відгуку', 'error'); return; }
   const result = await apiPost('/reviews', { book_id: bookId, rating, comment });
   if (!result || result.error) { showToast(result?.error || 'Помилка публікації', 'error'); return; }
@@ -1397,12 +1438,10 @@ async function loadReviews(bookId) {
   const data = await apiFetch('/reviews/book/' + bookId);
   const el   = document.getElementById('reviewsList');
   if (!el) return;
-
   if (!data || !data.reviews?.length) {
     el.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:.5rem 0">Поки немає відгуків. Будьте першим!</p>';
     return;
   }
-
   const isAdmin = authUser?.role === 'admin';
   el.innerHTML = `
     <p style="margin-bottom:1rem;font-size:.85rem;color:var(--muted)">
@@ -1453,12 +1492,10 @@ async function loadCatalog() {
   }
   renderCatalog(allBooks);
 }
-
 function renderCatalog(books) {
   document.getElementById('resultsCount').textContent = `Знайдено: ${books.length} книг`;
   renderBooksGrid('catalogGrid', books);
 }
-
 async function doSearch() {
   const q = document.getElementById('searchInput').value.trim();
   if (!q) { renderCatalog(allBooks); return; }
@@ -1475,11 +1512,9 @@ async function doSearch() {
   }
   renderCatalog(results);
 }
-
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.getElementById('searchInput') === document.activeElement) doSearch();
 });
-
 function applyFilters() {
   const checked = [...document.querySelectorAll('.catCheck:checked')].map(c => c.value);
   const minP = parseFloat(document.getElementById('priceMin').value) || 0;
@@ -1493,7 +1528,6 @@ function applyFilters() {
   }
   renderCatalog(filtered);
 }
-
 function resetFilters() {
   document.querySelectorAll('.catCheck').forEach(c => c.checked = false);
   document.getElementById('priceMin').value = 0;
@@ -1501,7 +1535,6 @@ function resetFilters() {
   document.getElementById('searchInput').value = '';
   renderCatalog(allBooks);
 }
-
 function filterByCat(catId) {
   showPage('catalog');
   setTimeout(() => {
@@ -1518,42 +1551,35 @@ function filterByCat(catId) {
 function updateCartCount() {
   document.getElementById('cartCount').textContent = cart.reduce((s, i) => s + i.qty, 0);
 }
-
 function saveCart() {
   localStorage.setItem('readcity_cart', JSON.stringify(cart));
   updateCartCount();
 }
-
 function addToCart(book, qty = 1) {
   const ex = cart.find(i => i.book_id === book.book_id);
   if (ex) ex.qty += qty; else cart.push({ ...book, qty });
   saveCart();
   showToast(`"${book.title}" додано до кошика`);
 }
-
 function removeFromCart(bookId) {
   cart = cart.filter(i => i.book_id !== bookId);
   saveCart(); renderCart();
 }
-
 function renderCart() {
   const el  = document.getElementById('cartItems');
   const sec = document.getElementById('cartCheckoutSection');
-
   if (!cart.length) {
     el.innerHTML = `<div class="cart-empty"><div class="empty-icon">📭</div><h3>Кошик порожній</h3><p style="margin-top:.5rem">Додайте книги з каталогу</p><br><button class="btn-primary" onclick="showPage('catalog')" style="margin-top:1rem">До каталогу</button></div>`;
     sec.style.display = 'none';
     return;
   }
   sec.style.display = 'block';
-
   if (authUser) {
     const nameEl = document.getElementById('chkName');
     if (nameEl && !nameEl.value) nameEl.value = authUser.name || '';
     const emailEl = document.getElementById('chkEmail');
     if (emailEl && !emailEl.value) emailEl.value = authUser.email || '';
   }
-
   el.innerHTML = cart.map(item => {
     const img = getBookImageUrl(item) || bookImages[item.book_id] || '';
     return `
@@ -1586,32 +1612,26 @@ function renderCart() {
     <div class="summary-row"><span class="summary-total">Разом</span><span class="summary-total" style="color:var(--rust)">${total + delivery} грн</span></div>
     ${total < 500 ? `<p style="font-size:.72rem;color:var(--sage);margin-top:.5rem">💡 Ще ${500 - total} грн до безкоштовної доставки!</p>` : `<p style="font-size:.72rem;color:var(--sage)">✓ Безкоштовна доставка!</p>`}`;
 }
-
 function changeCartQty(id, delta) {
   const item = cart.find(i => i.book_id === id);
   if (item) { item.qty = Math.max(1, item.qty + delta); saveCart(); renderCart(); }
 }
-
 function setCartQty(id, val) {
   const item = cart.find(i => i.book_id === id);
   if (item) { item.qty = Math.max(1, parseInt(val) || 1); saveCart(); renderCart(); }
 }
-
 function selectPayment(type) {
   selectedPayment = type;
   document.querySelectorAll('.pay-opt').forEach(el => el.classList.remove('selected'));
   document.getElementById('pay-' + type)?.classList.add('selected');
 }
-
 async function placeOrder() {
   const name     = document.getElementById('chkName').value.trim();
   const phone    = document.getElementById('chkPhone').value.trim();
   const email    = document.getElementById('chkEmail').value.trim();
   const address  = document.getElementById('chkAddress').value.trim();
   const delivery = document.getElementById('chkDelivery').value;
-
   if (!name || !phone || !address) { showToast('Заповніть усі поля!', 'error'); return; }
-
   const result = await apiPost('/orders', {
     customer_id: authUser?.id || 'guest',
     items: cart.map(i => ({ book_id: i.book_id, title: i.title, quantity: i.qty, price: i.price })),
@@ -1619,9 +1639,7 @@ async function placeOrder() {
     payment_method: selectedPayment === 'card' ? 'картка онлайн' : 'готівка при отриманні',
     customer_name: name, phone, email
   });
-
   if (!result || result.error) { showToast(result?.error || 'Помилка оформлення', 'error'); return; }
-
   const orderNum = result?.order?.order_number || 'ORD-2026-???';
   cart = []; saveCart();
   document.getElementById('successOrderNum').textContent = orderNum;
@@ -1637,20 +1655,16 @@ async function loadCabinet() {
   document.getElementById('cabinetName').textContent   = authUser.name;
   document.getElementById('cabinetEmail').textContent  = authUser.email;
   document.getElementById('cabinetRole').textContent   = authUser.role === 'admin' ? '⚙️ Адміністратор' : '👤 Покупець';
-
   const orders = await apiFetch('/orders/my');
   const el = document.getElementById('cabinetOrders');
-
   if (!orders || !orders.length) {
     el.innerHTML = '<p style="color:var(--muted)">У вас поки немає замовлень.</p>';
     return;
   }
-
   const statusClass = {
     'нове': 'status-new', 'в обробці': 'status-processing', 'підтверджено': 'status-confirmed',
     'передано в доставку': 'status-shipping', 'доставлено': 'status-delivered', 'скасовано': 'status-cancelled'
   };
-
   el.innerHTML = `
     <table class="orders-table">
       <thead><tr>
@@ -1674,13 +1688,19 @@ async function loadCabinet() {
 // ════════════════════════════════════════════════════════
 async function loadContacts() {
   const publishers = await apiFetch('/publishers');
-  if (publishers) {
+  if (publishers && publishers.length) {
     document.getElementById('publishersList').innerHTML = publishers.map(p =>
-      `<div style="margin-bottom:.5rem"><strong>${p.name}</strong> — ${p.city} · <span style="color:var(--gold)">${p.website}</span></div>`
+      `<div class="publisher-card">
+        <strong>${p.name}</strong>
+        ${p.city ? `<span style="color:var(--muted)">· ${p.city}</span>` : ''}
+        ${p.website ? `<br><a href="${p.website}" target="_blank" style="color:var(--gold);font-size:.75rem">${p.website}</a>` : ''}
+        ${p.contact ? `<br><span style="font-size:.75rem;color:var(--muted)">${p.contact}</span>` : ''}
+      </div>`
     ).join('');
+  } else {
+    document.getElementById('publishersList').innerHTML = '<p style="color:var(--muted);font-size:.8rem">Видавництв поки не додано.</p>';
   }
 }
-
 async function sendContactForm() {
   const name    = document.getElementById('contactName').value.trim();
   const email   = document.getElementById('contactEmail').value.trim();
@@ -1702,9 +1722,13 @@ async function sendContactForm() {
 // ════════════════════════════════════════════════════════
 const ADMIN_TAB_MAP = {
   books: 'adminBooks', orders: 'adminOrders', reviews: 'adminReviews',
-  authors: 'adminAuthors', categories: 'adminCategories', 'add-book': 'adminAddBook'
+  authors: 'adminAuthors', categories: 'adminCategories',
+  publishers: 'adminPublishers', 'add-book': 'adminAddBook'
 };
-const ADMIN_TAB_IDX = { books: 0, orders: 1, reviews: 2, authors: 3, categories: 4, 'add-book': 5 };
+const ADMIN_TAB_IDX = {
+  books: 0, orders: 1, reviews: 2, authors: 3, categories: 4,
+  publishers: 5, 'add-book': 6
+};
 
 function switchAdminTab(tab) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
@@ -1718,31 +1742,43 @@ function switchAdminTab(tab) {
   if (tab === 'reviews')    loadAdminReviews();
   if (tab === 'authors')    loadAdminAuthors();
   if (tab === 'categories') loadAdminCategories();
+  if (tab === 'publishers') loadAdminPublishers();
   if (tab === 'add-book')   loadAddBookForm();
 }
 
 async function loadAdminPanel() {
-  // Завантажуємо список авторів та категорій для форм
-  await refreshAuthorsAndCats();
+  await refreshAll();
   loadAdminBooks();
 }
 
-// Оновлює кеш авторів та категорій, заповнює select у формах книг
-async function refreshAuthorsAndCats() {
-  const [authors, cats] = await Promise.all([
+// Оновлює кеш авторів, категорій, видавництв + заповнює select-и
+async function refreshAll() {
+  const [authors, cats, pubs] = await Promise.all([
     apiFetch('/authors'),
-    apiFetch('/categories')
+    apiFetch('/categories'),
+    apiFetch('/publishers')
   ]);
   allAuthors    = authors || [];
   allCategories = cats    || [];
+  allPublishers = pubs    || [];
   populateAuthorSelects();
   populateCatGrids();
+  populatePublisherSelects();
 }
 
 function populateAuthorSelects() {
   const opts = '<option value="">— оберіть автора —</option>' +
     allAuthors.map(a => `<option value="${a.author_id}">${a.name}</option>`).join('');
   ['ab-author-select', 'eb-author-select'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+}
+
+function populatePublisherSelects(selectedId = '') {
+  const opts = '<option value="">— оберіть видавництво —</option>' +
+    allPublishers.map(p => `<option value="${p.publisher_id}" ${p.publisher_id === selectedId ? 'selected' : ''}>${p.name}${p.city ? ' (' + p.city + ')' : ''}</option>`).join('');
+  ['ab-publisher-select', 'eb-publisher-select'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = opts;
   });
@@ -1756,7 +1792,6 @@ function populateCatGrids(selectedIds = []) {
           ${c.name}
         </label>`).join('')
     : '<span style="color:var(--muted);font-size:.78rem">Категорій немає. Додайте в розділі "Категорії".</span>';
-
   ['ab-cats-grid', 'eb-cats-grid'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = html;
@@ -1774,23 +1809,23 @@ async function loadAdminBooks() {
   const base  = await apiFetch('/books') || [];
   const books = await Promise.all(base.map(b => apiFetch('/books/' + b.book_id)));
   const list  = books.map((d, i) => d && !d.error ? d : base[i]);
-
   if (!list.length) { el.innerHTML = '<p style="color:var(--muted);padding:1rem">Книг немає.</p>'; return; }
-
   el.innerHTML = `
     <div style="overflow-x:auto">
     <table class="admin-table">
       <thead><tr>
-        <th>Фото</th><th>Назва</th><th>Автор</th><th>Ціна</th><th>Склад</th><th>Дії</th>
+        <th>Фото</th><th>Назва</th><th>Автор</th><th>Видавництво</th><th>Ціна</th><th>Склад</th><th>Дії</th>
       </tr></thead>
       <tbody>
         ${list.map(b => {
           const imgUrl = getBookImageUrl(b);
           const stock  = b.stock || 0;
+          const pubName = b.publisher?.name || '—';
           return `<tr>
             <td>${imgUrl ? `<img src="${imgUrl}" class="admin-book-thumb" alt="">` : '<span style="font-size:1.5rem">📖</span>'}</td>
             <td><strong>${b.title}</strong>${b.isbn ? `<br><span style="font-size:.7rem;color:var(--muted)">${b.isbn}</span>` : ''}</td>
             <td style="color:var(--muted)">${getAuthorName(b)}</td>
+            <td style="color:var(--muted);font-size:.78rem">${pubName}</td>
             <td><strong style="color:var(--rust)">${b.price} грн</strong></td>
             <td><span class="stock-badge ${stock <= 3 ? 'low' : ''}">${stock} шт</span></td>
             <td>
@@ -1807,12 +1842,12 @@ async function loadAdminBooks() {
 }
 
 async function loadAddBookForm() {
-  await refreshAuthorsAndCats();
+  await refreshAll();
 }
 
 // ─── Admin: open edit modal ────────────────────
 async function openEditBook(bookId) {
-  await refreshAuthorsAndCats();
+  await refreshAll();
   const book = await apiFetch('/books/' + bookId);
   if (!book || book.error) return showToast('Помилка завантаження книги', 'error');
 
@@ -1826,7 +1861,7 @@ async function openEditBook(bookId) {
   document.getElementById('eb-purchase-price').value = book.purchase_price || '';
   document.getElementById('eb-description').value    = book.description || '';
 
-  // Автор — якщо є збіг у select, вибираємо; якщо ні — вручну
+  // Автор
   const authorName = getAuthorName(book);
   const authorSel  = document.getElementById('eb-author-select');
   const matchOpt   = [...authorSel.options].find(o => o.text === authorName);
@@ -1838,10 +1873,13 @@ async function openEditBook(bookId) {
     document.getElementById('eb-author-manual').value = authorName;
   }
 
-  // Категорії — відзначаємо поточні
+  // Видавництво
+  const currentPubId = book.publisher?.publisher_id || '';
+  populatePublisherSelects(currentPubId);
+
+  // Категорії
   const currentCatIds = (book.categories || []).map(c => c.category_id);
   populateCatGrids(currentCatIds);
-  // Оновлюємо тільки eb-cats-grid
   const ebGrid = document.getElementById('eb-cats-grid');
   if (ebGrid) {
     ebGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
@@ -1864,13 +1902,11 @@ async function submitEditBook() {
   const fd = new FormData();
   fd.append('title',          document.getElementById('eb-title').value.trim());
 
-  // Автор: пріоритет select, потім manual
   const authorSelVal = document.getElementById('eb-author-select').value;
   const authorManual = document.getElementById('eb-author-manual').value.trim();
   if (authorSelVal) {
     fd.append('author_id', authorSelVal);
-    const selText = document.getElementById('eb-author-select').selectedOptions[0]?.text || '';
-    fd.append('author', selText);
+    fd.append('author', document.getElementById('eb-author-select').selectedOptions[0]?.text || '');
   } else {
     fd.append('author', authorManual);
   }
@@ -1883,16 +1919,18 @@ async function submitEditBook() {
   fd.append('purchase_price', document.getElementById('eb-purchase-price').value);
   fd.append('description',    document.getElementById('eb-description').value);
 
+  // Видавництво
+  const pubVal = document.getElementById('eb-publisher-select').value;
+  fd.append('publisher_id', pubVal);
+
   // Категорії
-  const catIds = getCheckedCatIds('eb-cats-grid');
-  catIds.forEach(id => fd.append('category_ids[]', id));
+  getCheckedCatIds('eb-cats-grid').forEach(id => fd.append('category_ids[]', id));
 
   const imgFile = document.getElementById('eb-image').files[0];
   if (imgFile) fd.append('image', imgFile);
 
   const result = await apiFormData('PUT', '/books/' + id, fd);
   if (!result || result.error) { showToast(result?.error || 'Помилка збереження', 'error'); return; }
-
   showToast('Книгу оновлено!');
   closeModal('editBookModal');
   allBooks = [];
@@ -1911,14 +1949,13 @@ function confirmDeleteBook(bookId, title) {
 
 async function submitAddBook() {
   const fd = new FormData();
-  fd.append('title',          document.getElementById('ab-title').value.trim());
+  fd.append('title', document.getElementById('ab-title').value.trim());
 
   const authorSelVal = document.getElementById('ab-author-select').value;
   const authorManual = document.getElementById('ab-author-manual').value.trim();
   if (authorSelVal) {
     fd.append('author_id', authorSelVal);
-    const selText = document.getElementById('ab-author-select').selectedOptions[0]?.text || '';
-    fd.append('author', selText);
+    fd.append('author', document.getElementById('ab-author-select').selectedOptions[0]?.text || '');
   } else {
     fd.append('author', authorManual);
   }
@@ -1931,8 +1968,12 @@ async function submitAddBook() {
   fd.append('purchase_price', document.getElementById('ab-purchase-price').value);
   fd.append('description',    document.getElementById('ab-description').value);
 
-  const catIds = getCheckedCatIds('ab-cats-grid');
-  catIds.forEach(id => fd.append('category_ids[]', id));
+  // Видавництво
+  const pubVal = document.getElementById('ab-publisher-select').value;
+  if (pubVal) fd.append('publisher_id', pubVal);
+
+  // Категорії
+  getCheckedCatIds('ab-cats-grid').forEach(id => fd.append('category_ids[]', id));
 
   const imgFile = document.getElementById('ab-image').files[0];
   if (imgFile) fd.append('image', imgFile);
@@ -1947,6 +1988,7 @@ async function submitAddBook() {
   document.getElementById('ab-stock').value          = '0';
   document.getElementById('ab-author-select').value  = '';
   document.getElementById('ab-author-manual').value  = '';
+  document.getElementById('ab-publisher-select').value = '';
   document.getElementById('ab-image').value          = '';
   document.getElementById('ab-preview').style.display = 'none';
   document.querySelectorAll('#ab-cats-grid input[type=checkbox]').forEach(c => c.checked = false);
@@ -1959,7 +2001,6 @@ const STATUS_CLS    = {
   'нове': 'status-new', 'в обробці': 'status-processing', 'підтверджено': 'status-confirmed',
   'передано в доставку': 'status-shipping', 'доставлено': 'status-delivered', 'скасовано': 'status-cancelled'
 };
-
 async function loadAdminOrders() {
   const el = document.getElementById('adminOrdersTable');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -1992,7 +2033,6 @@ async function loadAdminOrders() {
     </table>
     </div>`;
 }
-
 async function changeOrderStatus(orderId, status) {
   const result = await apiPatch('/orders/' + orderId + '/status', { status });
   if (!result || result.error) { showToast(result?.error || 'Помилка', 'error'); return; }
@@ -2003,13 +2043,11 @@ async function changeOrderStatus(orderId, status) {
 async function loadAdminReviews() {
   const el = document.getElementById('adminReviewsTable');
   el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
   const data = await apiFetch('/reviews/all');
   if (!data || !data.length) {
     el.innerHTML = '<p style="color:var(--muted);padding:1rem">Відгуків поки немає.</p>';
     return;
   }
-
   el.innerHTML = `
     <div style="overflow-x:auto">
     <table class="admin-table">
@@ -2024,15 +2062,12 @@ async function loadAdminReviews() {
             <td><span style="color:var(--gold);font-size:.9rem">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></td>
             <td style="font-size:.78rem;max-width:220px;line-height:1.4">${r.comment}</td>
             <td style="font-size:.72rem;color:var(--muted)">${r.date}</td>
-            <td>
-              <button class="btn-sm btn-delete" onclick="adminDeleteReviewFromPanel('${r.review_id}')">🗑️ Видалити</button>
-            </td>
+            <td><button class="btn-sm btn-delete" onclick="adminDeleteReviewFromPanel('${r.review_id}')">🗑️ Видалити</button></td>
           </tr>`).join('')}
       </tbody>
     </table>
     </div>`;
 }
-
 async function adminDeleteReviewFromPanel(reviewId) {
   showConfirm('Видалити відгук?', 'Цей відгук буде видалено назавжди.', async () => {
     const result = await apiDelete('/reviews/' + reviewId);
@@ -2044,7 +2079,7 @@ async function adminDeleteReviewFromPanel(reviewId) {
 
 // ─── Admin: authors ────────────────────────────
 async function loadAdminAuthors() {
-  await refreshAuthorsAndCats();
+  await refreshAll();
   const el = document.getElementById('adminAuthorsTable');
   if (!allAuthors.length) {
     el.innerHTML = '<p style="color:var(--muted);padding:1rem">Авторів поки немає.</p>';
@@ -2063,34 +2098,27 @@ async function loadAdminAuthors() {
             <td style="color:var(--muted)">${a.birth_year || '—'}</td>
             <td style="color:var(--muted)">${a.country || '—'}</td>
             <td style="font-size:.78rem;max-width:260px;color:var(--muted)">${(a.biography || '').substring(0,80)}${(a.biography||'').length>80?'…':''}</td>
-            <td>
-              <button class="btn-sm btn-delete" onclick="confirmDeleteAuthor('${a.author_id}','${(a.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button>
-            </td>
+            <td><button class="btn-sm btn-delete" onclick="confirmDeleteAuthor('${a.author_id}','${(a.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button></td>
           </tr>`).join('')}
       </tbody>
     </table>
     </div>`;
 }
-
 async function submitAddAuthor() {
   const name      = document.getElementById('aa-name').value.trim();
   const country   = document.getElementById('aa-country').value.trim();
   const birthYear = document.getElementById('aa-birth-year').value;
   const biography = document.getElementById('aa-biography').value.trim();
-
   if (!name) { showToast("Введіть ім'я автора", 'error'); return; }
-
   const result = await apiPost('/authors', { name, country, birth_year: birthYear ? Number(birthYear) : undefined, biography });
   if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
-
   showToast(`Автора "${name}" додано!`);
-  document.getElementById('aa-name').value       = '';
-  document.getElementById('aa-country').value    = '';
+  document.getElementById('aa-name').value = '';
+  document.getElementById('aa-country').value = '';
   document.getElementById('aa-birth-year').value = '';
-  document.getElementById('aa-biography').value  = '';
+  document.getElementById('aa-biography').value = '';
   await loadAdminAuthors();
 }
-
 async function confirmDeleteAuthor(authorId, name) {
   showConfirm('Видалити автора?', `Видалити автора "${name}"? Книги автора залишаться.`, async () => {
     const result = await apiDelete('/authors/' + authorId);
@@ -2102,7 +2130,7 @@ async function confirmDeleteAuthor(authorId, name) {
 
 // ─── Admin: categories ─────────────────────────
 async function loadAdminCategories() {
-  await refreshAuthorsAndCats();
+  await refreshAll();
   const el = document.getElementById('adminCategoriesTable');
   if (!allCategories.length) {
     el.innerHTML = '<p style="color:var(--muted);padding:1rem">Категорій поки немає.</p>';
@@ -2111,39 +2139,30 @@ async function loadAdminCategories() {
   el.innerHTML = `
     <div style="overflow-x:auto">
     <table class="admin-table">
-      <thead><tr>
-        <th>Назва</th><th>Опис</th><th>Дії</th>
-      </tr></thead>
+      <thead><tr><th>Назва</th><th>Опис</th><th>Дії</th></tr></thead>
       <tbody>
         ${allCategories.map(c => `
           <tr>
             <td><strong>${c.name}</strong></td>
             <td style="font-size:.78rem;color:var(--muted)">${c.description || '—'}</td>
-            <td>
-              <button class="btn-sm btn-delete" onclick="confirmDeleteCategory('${c.category_id}','${(c.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button>
-            </td>
+            <td><button class="btn-sm btn-delete" onclick="confirmDeleteCategory('${c.category_id}','${(c.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button></td>
           </tr>`).join('')}
       </tbody>
     </table>
     </div>`;
 }
-
 async function submitAddCategory() {
   const name        = document.getElementById('ac-name').value.trim();
   const description = document.getElementById('ac-description').value.trim();
-
   if (!name) { showToast('Введіть назву категорії', 'error'); return; }
-
   const result = await apiPost('/categories', { name, description });
   if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
-
   showToast(`Категорію "${name}" додано!`);
   document.getElementById('ac-name').value        = '';
   document.getElementById('ac-description').value = '';
   allCategories = [];
   await loadAdminCategories();
 }
-
 async function confirmDeleteCategory(catId, name) {
   showConfirm('Видалити категорію?', `Видалити категорію "${name}"?`, async () => {
     const result = await apiDelete('/categories/' + catId);
@@ -2151,6 +2170,100 @@ async function confirmDeleteCategory(catId, name) {
     showToast(`Категорію "${name}" видалено`);
     allCategories = [];
     await loadAdminCategories();
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN: ВИДАВНИЦТВА (новий таб)
+// ════════════════════════════════════════════════════════
+async function loadAdminPublishers() {
+  await refreshAll();
+  renderAdminPublishersTable();
+}
+
+function renderAdminPublishersTable() {
+  const el = document.getElementById('adminPublishersTable');
+  if (!allPublishers.length) {
+    el.innerHTML = '<p style="color:var(--muted);padding:1rem">Видавництв поки немає. Додайте перше!</p>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr>
+        <th>Назва</th><th>Місто</th><th>Веб-сайт</th><th>Контакт</th><th>Дії</th>
+      </tr></thead>
+      <tbody>
+        ${allPublishers.map(p => `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td style="color:var(--muted)">${p.city || '—'}</td>
+            <td style="font-size:.78rem">
+              ${p.website ? `<a href="${p.website}" target="_blank" style="color:var(--gold)">${p.website}</a>` : '—'}
+            </td>
+            <td style="font-size:.78rem;color:var(--muted)">${p.contact || '—'}</td>
+            <td>
+              <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <button class="btn-sm btn-edit" onclick="openEditPublisher('${p.publisher_id}')">✏️ Ред.</button>
+                <button class="btn-sm btn-delete" onclick="confirmDeletePublisher('${p.publisher_id}','${(p.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+async function submitAddPublisher() {
+  const name    = document.getElementById('ap-name').value.trim();
+  const city    = document.getElementById('ap-city').value.trim();
+  const website = document.getElementById('ap-website').value.trim();
+  const contact = document.getElementById('ap-contact').value.trim();
+  if (!name) { showToast('Введіть назву видавництва', 'error'); return; }
+  const result = await apiPost('/publishers', { name, city, website, contact });
+  if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
+  showToast(`Видавництво "${name}" додано!`);
+  document.getElementById('ap-name').value    = '';
+  document.getElementById('ap-city').value    = '';
+  document.getElementById('ap-website').value = '';
+  document.getElementById('ap-contact').value = '';
+  allPublishers = [];
+  await loadAdminPublishers();
+}
+
+function openEditPublisher(pubId) {
+  const pub = allPublishers.find(p => p.publisher_id === pubId);
+  if (!pub) return;
+  document.getElementById('epu-id').value      = pub.publisher_id;
+  document.getElementById('epu-name').value    = pub.name    || '';
+  document.getElementById('epu-city').value    = pub.city    || '';
+  document.getElementById('epu-website').value = pub.website || '';
+  document.getElementById('epu-contact').value = pub.contact || '';
+  openModal('editPublisherModal');
+}
+
+async function submitEditPublisher() {
+  const id      = document.getElementById('epu-id').value;
+  const name    = document.getElementById('epu-name').value.trim();
+  const city    = document.getElementById('epu-city').value.trim();
+  const website = document.getElementById('epu-website').value.trim();
+  const contact = document.getElementById('epu-contact').value.trim();
+  if (!name) { showToast('Введіть назву видавництва', 'error'); return; }
+  const result = await apiPut('/publishers/' + id, { name, city, website, contact });
+  if (!result || result.error) { showToast(result?.error || 'Помилка збереження', 'error'); return; }
+  showToast(`Видавництво "${name}" оновлено!`);
+  closeModal('editPublisherModal');
+  allPublishers = [];
+  await loadAdminPublishers();
+}
+
+async function confirmDeletePublisher(pubId, name) {
+  showConfirm('Видалити видавництво?', `Видалити видавництво "${name}"? Книги залишаться без зміни.`, async () => {
+    const result = await apiDelete('/publishers/' + pubId);
+    if (!result || result.error) { showToast(result?.error || 'Помилка видалення', 'error'); return; }
+    showToast(`Видавництво "${name}" видалено`);
+    allPublishers = [];
+    await loadAdminPublishers();
   });
 }
 

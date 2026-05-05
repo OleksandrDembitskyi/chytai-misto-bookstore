@@ -309,7 +309,6 @@ app.get('/api/authors/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── НОВІ: Додати / Видалити автора (admin) ───
 app.post('/api/authors', authMiddleware, requireRole('admin'), async (req, res) => {
     try {
         const { name, biography, birth_year, country } = req.body;
@@ -361,7 +360,13 @@ app.delete('/api/authors/:id', authMiddleware, requireRole('admin'), async (req,
 app.get('/api/publishers', async (req, res) => {
     try {
         const p = await db.collection('publishers').find().toArray();
-        res.json(p.map(x => ({ publisher_id: x._id.toString(), name: x.name, contact: x.contact, website: x.website, city: x.city })));
+        res.json(p.map(x => ({
+            publisher_id: x._id.toString(),
+            name: x.name,
+            contact: x.contact || '',
+            website: x.website || '',
+            city: x.city || ''
+        })));
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -369,7 +374,68 @@ app.get('/api/publishers/:id', async (req, res) => {
     try {
         const p = await db.collection('publishers').findOne({ _id: new ObjectId(req.params.id) });
         if (!p) return res.json({ error: 'Не знайдено' });
-        res.json({ publisher_id: p._id.toString(), name: p.name, contact: p.contact, website: p.website, city: p.city });
+        res.json({
+            publisher_id: p._id.toString(),
+            name: p.name,
+            contact: p.contact || '',
+            website: p.website || '',
+            city: p.city || ''
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── НОВІ: Додати / Редагувати / Видалити видавництво (admin) ───
+app.post('/api/publishers', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, contact, website, city } = req.body;
+        if (!name || String(name).trim().length < 2)
+            return res.status(400).json({ error: 'Назва видавництва обов\'язкова (мін. 2 символи)' });
+
+        const existing = await db.collection('publishers').findOne({
+            name: { $regex: new RegExp(`^${String(name).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        if (existing) return res.status(409).json({ error: 'Видавництво з такою назвою вже існує' });
+
+        const doc = {
+            name: String(name).trim(),
+            contact: contact || '',
+            website: website || '',
+            city: city || '',
+            createdAt: new Date().toISOString()
+        };
+        const result = await db.collection('publishers').insertOne(doc);
+        res.status(201).json({ message: 'Видавництво додано', publisher_id: result.insertedId.toString(), ...doc });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/publishers/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, contact, website, city } = req.body;
+        if (!name || String(name).trim().length < 2)
+            return res.status(400).json({ error: 'Назва видавництва обов\'язкова' });
+
+        const update = {
+            name: String(name).trim(),
+            contact: contact || '',
+            website: website || '',
+            city: city || '',
+            updatedAt: new Date().toISOString()
+        };
+        const result = await db.collection('publishers').updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: update }
+        );
+        if (result.matchedCount === 0) return res.status(404).json({ error: 'Видавництво не знайдено' });
+        res.json({ message: 'Видавництво оновлено', publisher_id: req.params.id, ...update });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/publishers/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const p = await db.collection('publishers').findOne({ _id: new ObjectId(req.params.id) });
+        if (!p) return res.status(404).json({ error: 'Видавництво не знайдено' });
+        await db.collection('publishers').deleteOne({ _id: new ObjectId(req.params.id) });
+        res.json({ message: 'Видавництво видалено', publisher_id: req.params.id, name: p.name });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -391,7 +457,6 @@ app.get('/api/categories/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── НОВІ: Додати / Видалити категорію (admin) ───
 app.post('/api/categories', authMiddleware, requireRole('admin'), async (req, res) => {
     try {
         const { name, description } = req.body;
@@ -506,7 +571,9 @@ app.get('/api/books/:id', async (req, res) => {
             author: author
                 ? { author_id: author._id.toString(), name: author.name, biography: author.biography, birth_year: author.birth_year, country: author.country }
                 : (book.author ? { name: book.author } : null),
-            publisher: publisher ? { publisher_id: publisher._id.toString(), name: publisher.name, city: publisher.city, website: publisher.website } : null,
+            publisher: publisher
+                ? { publisher_id: publisher._id.toString(), name: publisher.name, city: publisher.city, website: publisher.website, contact: publisher.contact }
+                : null,
             categories: cats.map(c => ({ category_id: c._id.toString(), name: c.name }))
         });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -525,9 +592,7 @@ function validateBook(data) {
     return errors;
 }
 
-// Парсить category_ids з FormData (підтримує category_ids[] та category_ids)
 function parseCategoryIds(body) {
-    // FormData може слати як category_ids[] або category_ids
     let raw = body['category_ids[]'] || body['category_ids'] || [];
     if (!Array.isArray(raw)) raw = [raw];
     return raw.filter(Boolean).map(id => {
@@ -539,9 +604,7 @@ app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('imag
     try {
         const body = req.body;
         const errors = validateBook(body);
-        if (errors.length) {
-            return res.status(400).json({ error: errors.join('; ') });
-        }
+        if (errors.length) return res.status(400).json({ error: errors.join('; ') });
 
         const categoryIds = parseCategoryIds(body);
 
@@ -560,13 +623,18 @@ app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('imag
             createdAt: new Date().toISOString()
         };
 
-        // Якщо передано author_id — зберігаємо зв'язок
         if (body.author_id) {
             try {
                 doc.author_id = new ObjectId(body.author_id);
-                // Перезаписуємо ім'я з БД для консистентності
                 const a = await db.collection('authors').findOne({ _id: doc.author_id });
                 if (a) doc.author = a.name;
+            } catch { }
+        }
+
+        // Видавництво
+        if (body.publisher_id) {
+            try {
+                doc.publisher_id = new ObjectId(body.publisher_id);
             } catch { }
         }
 
@@ -579,9 +647,7 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
     try {
         const body = req.body;
         const errors = validateBook(body);
-        if (errors.length) {
-            return res.status(400).json({ error: errors.join('; ') });
-        }
+        if (errors.length) return res.status(400).json({ error: errors.join('; ') });
 
         const existing = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
         if (!existing) return res.status(404).json({ error: 'Книгу не знайдено' });
@@ -609,6 +675,17 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
                 const a = await db.collection('authors').findOne({ _id: update.author_id });
                 if (a) update.author = a.name;
             } catch { }
+        }
+
+        // Видавництво
+        if (body.publisher_id) {
+            try {
+                update.publisher_id = new ObjectId(body.publisher_id);
+            } catch { }
+        } else if (body.publisher_id === '') {
+            update.publisher_id = null;
+        } else {
+            update.publisher_id = existing.publisher_id || null;
         }
 
         await db.collection('books').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });
@@ -895,17 +972,30 @@ app.get('/api/inventory', authMiddleware, requireRole('admin'), async (req, res)
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── СТАТИСТИКА: повертає реальну кількість книг, авторів, категорій ─────
 app.get('/api/stats', async (req, res) => {
     try {
-        const [totalBooks, totalCustomers, totalOrders, totalReviews] = await Promise.all([
+        const [totalBooks, totalAuthors, totalCategories, totalPublishers, totalCustomers, totalOrders, totalReviews] = await Promise.all([
             db.collection('books').countDocuments(),
+            db.collection('authors').countDocuments(),
+            db.collection('categories').countDocuments(),
+            db.collection('publishers').countDocuments(),
             db.collection('customers').countDocuments(),
             db.collection('orders').countDocuments(),
             db.collection('reviews').countDocuments()
         ]);
         const paidOrders = await db.collection('orders').find({ payment_status: 'оплачено' }).toArray();
         const totalRevenue = paidOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
-        res.json({ total_books: totalBooks, total_customers: totalCustomers, total_orders: totalOrders, total_reviews: totalReviews, total_revenue: totalRevenue });
+        res.json({
+            total_books: totalBooks,
+            total_authors: totalAuthors,
+            total_categories: totalCategories,
+            total_publishers: totalPublishers,
+            total_customers: totalCustomers,
+            total_orders: totalOrders,
+            total_reviews: totalReviews,
+            total_revenue: totalRevenue
+        });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
