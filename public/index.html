@@ -204,6 +204,18 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .contact-icon{font-size:1rem;flex-shrink:0;margin-top:.1rem}
 .contact-text{font-size:.85rem;line-height:1.5}
 
+/* ─── PUBLISHERS SCROLL (contacts) ── */
+.publishers-scroll{display:flex;gap:1rem;overflow-x:auto;padding-bottom:.75rem;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin-top:1rem}
+.publishers-scroll::-webkit-scrollbar{height:4px}
+.publishers-scroll::-webkit-scrollbar-track{background:var(--parchment);border-radius:2px}
+.publishers-scroll::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px}
+.publisher-scroll-card{scroll-snap-align:start;background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;flex:0 0 220px;box-shadow:0 2px 12px var(--shadow);border-top:3px solid var(--gold)}
+.publisher-scroll-card strong{font-family:'Playfair Display',serif;font-size:.95rem;display:block;margin-bottom:.4rem}
+.publisher-scroll-card .pub-city{font-size:.72rem;color:var(--muted);margin-bottom:.35rem}
+.publisher-scroll-card a{color:var(--gold);font-size:.75rem;text-decoration:none}
+.publisher-scroll-card a:hover{color:var(--rust)}
+.publisher-scroll-card .pub-contact{font-size:.72rem;color:var(--muted);margin-top:.25rem}
+
 /* ─── SUCCESS ─────────────────────── */
 .success-page{text-align:center;padding:5rem 2rem}
 .success-icon{font-size:4rem;margin-bottom:1.5rem}
@@ -305,10 +317,6 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .status-select{border:1.5px solid var(--parchment);border-radius:6px;padding:.35rem .6rem;font-size:.75rem;font-family:'Montserrat',sans-serif;background:var(--cream);color:var(--ink);cursor:pointer}
 .status-select:focus{outline:none;border-color:var(--gold)}
 
-/* ─── PUBLISHER CARD (contacts) ───── */
-.publisher-card{background:var(--parchment);border-radius:6px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.8rem}
-.publisher-card strong{display:block;margin-bottom:.15rem}
-
 /* ─── MISC ────────────────────────── */
 .loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--muted)}
 .spinner{width:28px;height:28px;border:3px solid var(--parchment);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin-right:.8rem}
@@ -379,7 +387,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         <button class="btn-primary" onclick="showPage('catalog')">Перейти до каталогу</button>
         <button class="btn-outline" onclick="scrollToSection('featured')">Рекомендовані</button>
       </div>
-      <!-- stats оновлюються динамічно з /api/stats -->
       <div class="hero-stats" id="heroStats">
         <div class="stat"><div class="stat-num" id="statBooks">—</div><div class="stat-label">Книг</div></div>
         <div class="stat"><div class="stat-num" id="statAuthors">—</div><div class="stat-label">Авторів</div></div>
@@ -558,9 +565,16 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
           <textarea class="form-input" id="contactMessage" rows="5" placeholder="Ваше запитання..." style="resize:vertical"></textarea>
         </div>
         <button class="btn-primary" style="width:100%" onclick="sendContactForm()">Надіслати</button>
-        <br><br>
-        <h3 style="font-size:1rem;margin-bottom:.75rem">📦 Видавництва-партнери</h3>
-        <div id="publishersList" style="font-size:.8rem;color:var(--muted)">Завантаження...</div>
+      </div>
+    </div>
+
+    <!-- ─── Видавництва-партнери — горизонтальний скрол ─── -->
+    <div style="margin-top:3rem">
+      <div class="section-header" style="margin-bottom:.75rem">
+        <div class="section-title" style="font-size:1.5rem">Видавництва-<span>партнери</span></div>
+      </div>
+      <div class="publishers-scroll" id="publishersList">
+        <div class="loading"><div class="spinner"></div> Завантаження...</div>
       </div>
     </div>
   </div>
@@ -684,7 +698,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       </div>
     </div>
 
-    <!-- ════ PUBLISHERS MANAGEMENT (НОВИЙ ТАБ) ════ -->
+    <!-- PUBLISHERS MANAGEMENT -->
     <div id="adminPublishers" class="admin-section">
       <div class="admin-card">
         <h3>➕ Додати видавництво</h3>
@@ -756,7 +770,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
             <label class="form-label">Закупівельна ціна</label>
             <input type="number" class="form-input" id="ab-purchase-price" placeholder="150">
           </div>
-          <!-- ВИДАВНИЦТВО у формі книги -->
           <div class="form-group">
             <label class="form-label">Видавництво</label>
             <select class="form-select" id="ab-publisher-select">
@@ -870,7 +883,6 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         <label class="form-label">Закупівельна ціна</label>
         <input type="number" class="form-input" id="eb-purchase-price">
       </div>
-      <!-- ВИДАВНИЦТВО у формі редагування книги -->
       <div class="form-group">
         <label class="form-label">Видавництво</label>
         <select class="form-select" id="eb-publisher-select">
@@ -1253,10 +1265,9 @@ function renderBooksGrid(containerId, books) {
 }
 
 // ════════════════════════════════════════════════════════
-//  HOME  —  статистика тягнеться з /api/stats
+//  HOME
 // ════════════════════════════════════════════════════════
 async function loadHome() {
-  // Статистика: реальні числа з БД
   const stats = await apiFetch('/stats');
   if (stats) {
     document.getElementById('statBooks').textContent   = stats.total_books   ?? '—';
@@ -1688,17 +1699,18 @@ async function loadCabinet() {
 // ════════════════════════════════════════════════════════
 async function loadContacts() {
   const publishers = await apiFetch('/publishers');
+  const el = document.getElementById('publishersList');
   if (publishers && publishers.length) {
-    document.getElementById('publishersList').innerHTML = publishers.map(p =>
-      `<div class="publisher-card">
+    el.innerHTML = publishers.map(p =>
+      `<div class="publisher-scroll-card">
         <strong>${p.name}</strong>
-        ${p.city ? `<span style="color:var(--muted)">· ${p.city}</span>` : ''}
-        ${p.website ? `<br><a href="${p.website}" target="_blank" style="color:var(--gold);font-size:.75rem">${p.website}</a>` : ''}
-        ${p.contact ? `<br><span style="font-size:.75rem;color:var(--muted)">${p.contact}</span>` : ''}
+        ${p.city ? `<div class="pub-city">📍 ${p.city}</div>` : ''}
+        ${p.website ? `<a href="${p.website}" target="_blank">🌐 ${p.website}</a>` : ''}
+        ${p.contact ? `<div class="pub-contact">✉️ ${p.contact}</div>` : ''}
       </div>`
     ).join('');
   } else {
-    document.getElementById('publishersList').innerHTML = '<p style="color:var(--muted);font-size:.8rem">Видавництв поки не додано.</p>';
+    el.innerHTML = '<p style="color:var(--muted);font-size:.8rem;padding:.5rem 0">Видавництв поки не додано.</p>';
   }
 }
 async function sendContactForm() {
@@ -1751,7 +1763,6 @@ async function loadAdminPanel() {
   loadAdminBooks();
 }
 
-// Оновлює кеш авторів, категорій, видавництв + заповнює select-и
 async function refreshAll() {
   const [authors, cats, pubs] = await Promise.all([
     apiFetch('/authors'),
@@ -1845,7 +1856,6 @@ async function loadAddBookForm() {
   await refreshAll();
 }
 
-// ─── Admin: open edit modal ────────────────────
 async function openEditBook(bookId) {
   await refreshAll();
   const book = await apiFetch('/books/' + bookId);
@@ -1861,7 +1871,6 @@ async function openEditBook(bookId) {
   document.getElementById('eb-purchase-price').value = book.purchase_price || '';
   document.getElementById('eb-description').value    = book.description || '';
 
-  // Автор
   const authorName = getAuthorName(book);
   const authorSel  = document.getElementById('eb-author-select');
   const matchOpt   = [...authorSel.options].find(o => o.text === authorName);
@@ -1873,11 +1882,9 @@ async function openEditBook(bookId) {
     document.getElementById('eb-author-manual').value = authorName;
   }
 
-  // Видавництво
   const currentPubId = book.publisher?.publisher_id || '';
   populatePublisherSelects(currentPubId);
 
-  // Категорії
   const currentCatIds = (book.categories || []).map(c => c.category_id);
   populateCatGrids(currentCatIds);
   const ebGrid = document.getElementById('eb-cats-grid');
@@ -1919,11 +1926,9 @@ async function submitEditBook() {
   fd.append('purchase_price', document.getElementById('eb-purchase-price').value);
   fd.append('description',    document.getElementById('eb-description').value);
 
-  // Видавництво
   const pubVal = document.getElementById('eb-publisher-select').value;
   fd.append('publisher_id', pubVal);
 
-  // Категорії
   getCheckedCatIds('eb-cats-grid').forEach(id => fd.append('category_ids[]', id));
 
   const imgFile = document.getElementById('eb-image').files[0];
@@ -1968,11 +1973,9 @@ async function submitAddBook() {
   fd.append('purchase_price', document.getElementById('ab-purchase-price').value);
   fd.append('description',    document.getElementById('ab-description').value);
 
-  // Видавництво
   const pubVal = document.getElementById('ab-publisher-select').value;
   if (pubVal) fd.append('publisher_id', pubVal);
 
-  // Категорії
   getCheckedCatIds('ab-cats-grid').forEach(id => fd.append('category_ids[]', id));
 
   const imgFile = document.getElementById('ab-image').files[0];
@@ -1985,12 +1988,12 @@ async function submitAddBook() {
   ['ab-title','ab-price','ab-isbn','ab-year','ab-pages','ab-purchase-price','ab-description'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('ab-stock').value          = '0';
-  document.getElementById('ab-author-select').value  = '';
-  document.getElementById('ab-author-manual').value  = '';
+  document.getElementById('ab-stock').value            = '0';
+  document.getElementById('ab-author-select').value    = '';
+  document.getElementById('ab-author-manual').value    = '';
   document.getElementById('ab-publisher-select').value = '';
-  document.getElementById('ab-image').value          = '';
-  document.getElementById('ab-preview').style.display = 'none';
+  document.getElementById('ab-image').value            = '';
+  document.getElementById('ab-preview').style.display  = 'none';
   document.querySelectorAll('#ab-cats-grid input[type=checkbox]').forEach(c => c.checked = false);
   allBooks = [];
 }
@@ -2113,10 +2116,10 @@ async function submitAddAuthor() {
   const result = await apiPost('/authors', { name, country, birth_year: birthYear ? Number(birthYear) : undefined, biography });
   if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
   showToast(`Автора "${name}" додано!`);
-  document.getElementById('aa-name').value = '';
-  document.getElementById('aa-country').value = '';
+  document.getElementById('aa-name').value       = '';
+  document.getElementById('aa-country').value    = '';
   document.getElementById('aa-birth-year').value = '';
-  document.getElementById('aa-biography').value = '';
+  document.getElementById('aa-biography').value  = '';
   await loadAdminAuthors();
 }
 async function confirmDeleteAuthor(authorId, name) {
@@ -2173,9 +2176,7 @@ async function confirmDeleteCategory(catId, name) {
   });
 }
 
-// ════════════════════════════════════════════════════════
-//  ADMIN: ВИДАВНИЦТВА (новий таб)
-// ════════════════════════════════════════════════════════
+// ─── Admin: publishers ─────────────────────────
 async function loadAdminPublishers() {
   await refreshAll();
   renderAdminPublishersTable();
