@@ -9,7 +9,7 @@
  * - Функціонал кошика (додавання, видалення, зміна кількості)
  * - Розрахунки (сума, доставка, кількість товарів)
  * - Валідація даних (email, телефон, обов'язкові поля форми)
- * - Допоміжні функції (статус наявності, ім'я автора, форматування ціни)
+ * - Допоміжні функції (статус наявності, ім'я автора, форматування ціни, отримання зображення)
  * - Інтеграційні сценарії (повний цикл роботи з кошиком)
  * - Додаткові сценарії (порожній кошик, null значення, вартість доставки, наявність)
  */
@@ -20,9 +20,6 @@
 
 describe('🛒 Функціонал кошика', () => {
   
-  /**
-   * Тест: Додавання нової книги до порожнього кошика
-   */
   test('Додавання нової книги збільшує кількість позицій', () => {
     let cart = [];
     const book = { book_id: '1', title: 'Кобзар', author: 'Тарас Шевченко', price: 450 };
@@ -34,9 +31,6 @@ describe('🛒 Функціонал кошика', () => {
     expect(cart[0].qty).toBe(1);
   });
 
-  /**
-   * Тест: Додавання книги, яка вже є в кошику
-   */
   test('Додавання існуючої книги збільшує кількість, а не створює нову позицію', () => {
     let cart = [{ book_id: '1', title: 'Кобзар', price: 450, qty: 1 }];
     const book = { book_id: '1', title: 'Кобзар', price: 450 };
@@ -48,9 +42,6 @@ describe('🛒 Функціонал кошика', () => {
     expect(cart[0].qty).toBe(2);
   });
 
-  /**
-   * Тест: Видалення книги з кошика
-   */
   test('Видалення книги з кошика працює коректно', () => {
     let cart = [
       { book_id: '1', title: 'Кобзар', price: 450, qty: 2 },
@@ -63,9 +54,6 @@ describe('🛒 Функціонал кошика', () => {
     expect(cart[0].title).toBe('Маруся Чурай');
   });
 
-  /**
-   * Тест: Збільшення кількості товару
-   */
   test('Збільшення кількості товару', () => {
     let cart = [{ book_id: '1', title: 'Кобзар', price: 450, qty: 1 }];
     
@@ -74,9 +62,6 @@ describe('🛒 Функціонал кошика', () => {
     expect(cart[0].qty).toBe(2);
   });
 
-  /**
-   * Тест: Зменшення кількості з нижньою межею 1
-   */
   test('Зменшення кількості не опускається нижче 1', () => {
     let cart = [{ book_id: '1', title: 'Кобзар', price: 450, qty: 1 }];
     
@@ -94,9 +79,6 @@ describe('🛒 Функціонал кошика', () => {
 
 describe('💰 Розрахунки та логіка', () => {
   
-  /**
-   * Тест: Розрахунок загальної суми кошика
-   */
   test('Загальна сума кошика рахується правильно', () => {
     const cart = [
       { price: 450, qty: 2 },
@@ -108,9 +90,6 @@ describe('💰 Розрахунки та логіка', () => {
     expect(total).toBe(2060);
   });
 
-  /**
-   * Тест: Логіка безкоштовної доставки
-   */
   test('Доставка безкоштовна при замовленні від 500 грн', () => {
     const checkDelivery = (total) => total >= 500 ? 0 : 65;
     
@@ -119,10 +98,7 @@ describe('💰 Розрахунки та логіка', () => {
     expect(checkDelivery(670)).toBe(0);
   });
 
-  /**
-   * Тест: Підрахунок загальної кількості товарів
-   */
-  test('Підрахунок загальної кількості одиниць товару', () => {
+  test('Підрахунок загальної кількості товарів', () => {
     const cart = [
       { qty: 2 },
       { qty: 1 },
@@ -140,9 +116,6 @@ describe('💰 Розрахунки та логіка', () => {
 
 describe('🔍 Допоміжні функції', () => {
   
-  /**
-   * Тест: Функція getStockInfo (статус наявності книги)
-   */
   test('Функція getStockInfo повертає правильний статус', () => {
     function getStockInfo(stock) {
       if (stock === 0) return { label: 'Немає в наявності', cls: 'low' };
@@ -156,9 +129,6 @@ describe('🔍 Допоміжні функції', () => {
     expect(getStockInfo(10)).toEqual({ label: 'В наявності', cls: '' });
   });
 
-  /**
-   * Тест: Функція getAuthorName (отримання імені автора)
-   */
   test('Функція getAuthorName коректно обробляє різні формати', () => {
     function getAuthorName(book) {
       if (!book.author) return '';
@@ -178,9 +148,6 @@ describe('🔍 Допоміжні функції', () => {
     expect(getAuthorName(book4)).toBe('');
   });
 
-  /**
-   * Тест: Форматування ціни
-   */
   test('Форматування ціни додає валюту', () => {
     function formatPrice(price) {
       return `${price} грн`;
@@ -190,6 +157,44 @@ describe('🔍 Допоміжні функції', () => {
     expect(formatPrice(0)).toBe('0 грн');
     expect(formatPrice(450.5)).toBe('450.5 грн');
   });
+
+  /**
+   * НОВИЙ ТЕСТ: Функція getBookImageUrl (після видалення bookImages)
+   * Тепер вона повертає тільки imageUrl з БД або порожній рядок
+   */
+  test('Функція getBookImageUrl повертає imageUrl з БД або порожній рядок', () => {
+    // Актуальна версія функції з нашого коду
+    function getBookImageUrl(book) {
+      return book?.imageUrl || '';
+    }
+    
+    // Тест 1: Книга має зображення в Cloudinary
+    const bookWithImage = { 
+      book_id: '1', 
+      title: 'Кобзар', 
+      imageUrl: 'https://res.cloudinary.com/duy8kln4o/image/upload/v123456789/bookstore_crm/books/kobzar.jpg' 
+    };
+    expect(getBookImageUrl(bookWithImage)).toBe(bookWithImage.imageUrl);
+    
+    // Тест 2: Книга не має зображення (imageUrl порожній)
+    const bookWithoutImage = { 
+      book_id: '2', 
+      title: 'Маруся Чурай', 
+      imageUrl: '' 
+    };
+    expect(getBookImageUrl(bookWithoutImage)).toBe('');
+    
+    // Тест 3: Книга без властивості imageUrl
+    const bookNoImageProperty = { 
+      book_id: '3', 
+      title: 'Тіні забутих предків' 
+    };
+    expect(getBookImageUrl(bookNoImageProperty)).toBe('');
+    
+    // Тест 4: null значення (безпечна обробка)
+    expect(getBookImageUrl(null)).toBe('');
+    expect(getBookImageUrl(undefined)).toBe('');
+  });
 });
 
 // ============================================
@@ -198,9 +203,6 @@ describe('🔍 Допоміжні функції', () => {
 
 describe('✉️ Валідація даних', () => {
   
-  /**
-   * Тест: Валідація email
-   */
   test('Валідація email працює правильно', () => {
     function isValidEmail(email) {
       const regex = /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/;
@@ -214,9 +216,6 @@ describe('✉️ Валідація даних', () => {
     expect(isValidEmail('@gmail.com')).toBe(false);
   });
 
-  /**
-   * Тест: Валідація телефону
-   */
   test('Валідація телефону працює правильно', () => {
     function isValidPhone(phone) {
       const regex = /^(\+38)?0[0-9]{9}$/;
@@ -230,9 +229,6 @@ describe('✉️ Валідація даних', () => {
     expect(isValidPhone('invalid')).toBe(false);
   });
 
-  /**
-   * Тест: Валідація обов'язкових полів форми
-   */
   test('Валідація обов\'язкових полів форми', () => {
     const isFormValid = (name, email, phone) => {
       return name.trim() !== '' && email.includes('@') && phone.length >= 10;
@@ -251,45 +247,33 @@ describe('✉️ Валідація даних', () => {
 
 describe('🔄 Інтеграційні тести', () => {
   
-  /**
-   * Тест: Повний цикл роботи з кошиком
-   */
   test('Повний цикл: додавання → зміна кількості → видалення → розрахунок', () => {
     let cart = [];
     
-    // Додаємо першу книгу
     cart.push({ book_id: '1', title: 'Кобзар', price: 450, qty: 1 });
     expect(cart.length).toBe(1);
     
-    // Додаємо другу книгу
     cart.push({ book_id: '2', title: 'Маруся Чурай', price: 320, qty: 1 });
     expect(cart.length).toBe(2);
     
-    // Збільшуємо кількість першої книги
     cart[0].qty = 2;
     
-    // Розраховуємо суму
     const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
     expect(total).toBe(1220);
     
-    // Перевіряємо доставку
     const delivery = total >= 500 ? 0 : 65;
     expect(delivery).toBe(0);
     
-    // Видаляємо першу книгу
     cart = cart.filter(i => i.book_id !== '1');
     expect(cart.length).toBe(1);
     expect(cart[0].title).toBe('Маруся Чурай');
   });
 
-  /**
-   * Тест: Розрахунок кількості унікальних книг у кошику
-   */
   test('Розрахунок кількості унікальних книг у кошику', () => {
     const cart = [
       { book_id: '1', qty: 2 },
       { book_id: '2', qty: 1 },
-      { book_id: '1', qty: 1 }  // дублікат book_id
+      { book_id: '1', qty: 1 }
     ];
     
     const uniqueBooks = new Set(cart.map(item => item.book_id)).size;
@@ -303,9 +287,6 @@ describe('🔄 Інтеграційні тести', () => {
 
 describe('➕ Додаткові сценарії', () => {
   
-  /**
-   * Тест: Порожній кошик має нульову суму
-   */
   test('Порожній кошик має нульову суму', () => {
     const cart = [];
     const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -315,9 +296,6 @@ describe('➕ Додаткові сценарії', () => {
     expect(delivery).toBe(65);
   });
 
-  /**
-   * Тест: Обробка null та undefined значень
-   */
   test('Обробка null та undefined значень', () => {
     function getAuthorName(book) {
       if (!book?.author) return '';
@@ -332,9 +310,6 @@ describe('➕ Додаткові сценарії', () => {
     expect(getAuthorName({ author: null })).toBe('');
   });
 
-  /**
-   * Тест: Розрахунок вартості доставки для різних сум
-   */
   test('Розрахунок вартості доставки для різних сум', () => {
     const deliveryCost = (total) => {
       if (total === 0) return 0;
@@ -350,9 +325,6 @@ describe('➕ Додаткові сценарії', () => {
     expect(deliveryCost(1000)).toBe(0);
   });
 
-  /**
-   * Тест: Перевірка наявності книги для замовлення
-   */
   test('Книгу можна замовити тільки якщо вона є в наявності', () => {
     const canOrder = (stock) => stock > 0;
     
