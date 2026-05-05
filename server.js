@@ -309,6 +309,52 @@ app.get('/api/authors/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── НОВІ: Додати / Видалити автора (admin) ───
+app.post('/api/authors', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, biography, birth_year, country } = req.body;
+        if (!name || String(name).trim().length < 2)
+            return res.status(400).json({ error: "Ім'я автора обов'язкове (мін. 2 символи)" });
+
+        const doc = {
+            name: String(name).trim(),
+            biography: biography || '',
+            birth_year: birth_year ? Number(birth_year) : null,
+            country: country || '',
+            createdAt: new Date().toISOString()
+        };
+        const result = await db.collection('authors').insertOne(doc);
+        res.status(201).json({ message: 'Автора додано', author_id: result.insertedId.toString(), ...doc });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/authors/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, biography, birth_year, country } = req.body;
+        if (!name || String(name).trim().length < 2)
+            return res.status(400).json({ error: "Ім'я автора обов'язкове" });
+
+        const update = {
+            name: String(name).trim(),
+            biography: biography || '',
+            birth_year: birth_year ? Number(birth_year) : null,
+            country: country || '',
+            updatedAt: new Date().toISOString()
+        };
+        await db.collection('authors').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });
+        res.json({ message: 'Автора оновлено', author_id: req.params.id, ...update });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/authors/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const a = await db.collection('authors').findOne({ _id: new ObjectId(req.params.id) });
+        if (!a) return res.status(404).json({ error: 'Автора не знайдено' });
+        await db.collection('authors').deleteOne({ _id: new ObjectId(req.params.id) });
+        res.json({ message: 'Автора видалено', author_id: req.params.id, name: a.name });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ============================================
 //  ВИДАВНИЦТВА
 // ============================================
@@ -342,6 +388,35 @@ app.get('/api/categories/:id', async (req, res) => {
         const c = await db.collection('categories').findOne({ _id: new ObjectId(req.params.id) });
         if (!c) return res.json({ error: 'Не знайдено' });
         res.json({ category_id: c._id.toString(), name: c.name, description: c.description });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── НОВІ: Додати / Видалити категорію (admin) ───
+app.post('/api/categories', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, description } = req.body;
+        if (!name || String(name).trim().length < 2)
+            return res.status(400).json({ error: 'Назва категорії обов\'язкова (мін. 2 символи)' });
+
+        const existing = await db.collection('categories').findOne({ name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } });
+        if (existing) return res.status(409).json({ error: 'Категорія з такою назвою вже існує' });
+
+        const doc = {
+            name: String(name).trim(),
+            description: description || '',
+            createdAt: new Date().toISOString()
+        };
+        const result = await db.collection('categories').insertOne(doc);
+        res.status(201).json({ message: 'Категорію додано', category_id: result.insertedId.toString(), ...doc });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/categories/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const c = await db.collection('categories').findOne({ _id: new ObjectId(req.params.id) });
+        if (!c) return res.status(404).json({ error: 'Категорію не знайдено' });
+        await db.collection('categories').deleteOne({ _id: new ObjectId(req.params.id) });
+        res.json({ message: 'Категорію видалено', category_id: req.params.id, name: c.name });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -428,7 +503,9 @@ app.get('/api/books/:id', async (req, res) => {
             pages: book.pages,
             description: book.description,
             imageUrl: book.imageUrl || '',
-            author: author ? { author_id: author._id.toString(), name: author.name, biography: author.biography, birth_year: author.birth_year, country: author.country } : null,
+            author: author
+                ? { author_id: author._id.toString(), name: author.name, biography: author.biography, birth_year: author.birth_year, country: author.country }
+                : (book.author ? { name: book.author } : null),
             publisher: publisher ? { publisher_id: publisher._id.toString(), name: publisher.name, city: publisher.city, website: publisher.website } : null,
             categories: cats.map(c => ({ category_id: c._id.toString(), name: c.name }))
         });
@@ -448,6 +525,16 @@ function validateBook(data) {
     return errors;
 }
 
+// Парсить category_ids з FormData (підтримує category_ids[] та category_ids)
+function parseCategoryIds(body) {
+    // FormData може слати як category_ids[] або category_ids
+    let raw = body['category_ids[]'] || body['category_ids'] || [];
+    if (!Array.isArray(raw)) raw = [raw];
+    return raw.filter(Boolean).map(id => {
+        try { return new ObjectId(id); } catch { return null; }
+    }).filter(Boolean);
+}
+
 app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('image'), async (req, res) => {
     try {
         const body = req.body;
@@ -455,6 +542,8 @@ app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('imag
         if (errors.length) {
             return res.status(400).json({ error: errors.join('; ') });
         }
+
+        const categoryIds = parseCategoryIds(body);
 
         const doc = {
             title: String(body.title).trim(),
@@ -467,14 +556,22 @@ app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('imag
             pages: body.pages ? Number(body.pages) : undefined,
             description: body.description || '',
             imageUrl: req.file ? req.file.path : (body.imageUrl || ''),
+            category_ids: categoryIds,
             createdAt: new Date().toISOString()
         };
+
+        // Якщо передано author_id — зберігаємо зв'язок
         if (body.author_id) {
-            try { doc.author_id = new ObjectId(body.author_id); } catch { }
+            try {
+                doc.author_id = new ObjectId(body.author_id);
+                // Перезаписуємо ім'я з БД для консистентності
+                const a = await db.collection('authors').findOne({ _id: doc.author_id });
+                if (a) doc.author = a.name;
+            } catch { }
         }
 
         const result = await db.collection('books').insertOne(doc);
-        res.status(201).json({ message: 'Книгу додано', book_id: result.insertedId.toString(), ...doc });
+        res.status(201).json({ message: 'Книгу додано', book_id: result.insertedId.toString(), title: doc.title, ...doc });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -489,6 +586,8 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
         const existing = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
         if (!existing) return res.status(404).json({ error: 'Книгу не знайдено' });
 
+        const categoryIds = parseCategoryIds(body);
+
         const update = {
             title: String(body.title).trim(),
             author: String(body.author || '').trim(),
@@ -500,10 +599,16 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
             pages: body.pages ? Number(body.pages) : existing.pages,
             description: body.description !== undefined ? body.description : existing.description,
             imageUrl: req.file ? req.file.path : (body.imageUrl || existing.imageUrl || ''),
+            category_ids: categoryIds.length > 0 ? categoryIds : (existing.category_ids || []),
             updatedAt: new Date().toISOString()
         };
+
         if (body.author_id) {
-            try { update.author_id = new ObjectId(body.author_id); } catch { }
+            try {
+                update.author_id = new ObjectId(body.author_id);
+                const a = await db.collection('authors').findOne({ _id: update.author_id });
+                if (a) update.author = a.name;
+            } catch { }
         }
 
         await db.collection('books').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });

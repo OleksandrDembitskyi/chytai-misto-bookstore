@@ -144,8 +144,8 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 /* ─── REVIEWS ─────────────────────── */
 .reviews-section{margin-top:3rem}
 .reviews-section h3{font-family:'Playfair Display',serif;font-size:1.4rem;margin-bottom:1.5rem}
-.review-card{background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;margin-bottom:1rem;box-shadow:0 1px 8px var(--shadow);position:relative}
-.review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.review-card{background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;margin-bottom:1rem;box-shadow:0 1px 8px var(--shadow)}
+.review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;flex-wrap:wrap;gap:.4rem}
 .review-name{font-weight:700;font-size:.85rem}
 .review-date{font-size:.7rem;color:var(--muted)}
 .stars{color:var(--gold);font-size:.9rem;letter-spacing:1px}
@@ -153,8 +153,10 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .stars-input span{font-size:1.6rem;cursor:pointer;color:var(--parchment);transition:color .15s,transform .15s}
 .stars-input span.active,.stars-input span:hover{color:var(--gold);transform:scale(1.1)}
 .review-text{font-size:.85rem;line-height:1.6;margin-top:.5rem}
-.review-delete-btn{position:absolute;top:.8rem;right:.8rem;background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--muted);padding:.25rem .5rem;border-radius:4px;transition:background .2s,color .2s}
-.review-delete-btn:hover{background:rgba(139,58,30,.1);color:var(--rust)}
+/* ── ФІКС: кнопка видалення відгуку — внизу, не зверху ── */
+.review-footer{display:flex;align-items:center;justify-content:flex-end;margin-top:.75rem;padding-top:.6rem;border-top:1px solid var(--parchment)}
+.review-delete-btn{background:none;border:1px solid rgba(139,58,30,.25);cursor:pointer;font-size:.72rem;color:var(--muted);padding:.3rem .7rem;border-radius:4px;font-family:'Montserrat',sans-serif;font-weight:500;transition:background .2s,color .2s,border-color .2s;display:flex;align-items:center;gap:.3rem}
+.review-delete-btn:hover{background:rgba(139,58,30,.1);color:var(--rust);border-color:var(--rust)}
 
 /* ─── ADD REVIEW FORM ─────────────── */
 .add-review-box{background:var(--card-bg);border-radius:10px;padding:1.5rem;box-shadow:0 2px 12px var(--shadow);margin-bottom:2rem;border-left:3px solid var(--gold)}
@@ -259,6 +261,23 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .stock-badge{display:inline-block;background:rgba(74,103,65,.12);color:var(--sage);border-radius:4px;padding:.1rem .5rem;font-size:.72rem;font-weight:700}
 .stock-badge.low{background:rgba(139,58,30,.1);color:var(--rust)}
 
+/* ─── CATEGORIES CHECKBOXES IN FORMS ─ */
+.cats-check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.4rem;max-height:160px;overflow-y:auto;border:1.5px solid var(--parchment);border-radius:6px;padding:.6rem;background:var(--cream)}
+.cats-check-grid label{display:flex;align-items:center;gap:.4rem;font-size:.78rem;cursor:pointer;padding:.2rem .3rem;border-radius:4px;transition:background .15s}
+.cats-check-grid label:hover{background:rgba(200,146,42,.08)}
+.cats-check-grid input[type=checkbox]{accent-color:var(--gold)}
+
+/* ─── AUTHORS SCROLL (home page) ──── */
+.authors-scroll{display:flex;gap:1rem;overflow-x:auto;padding-bottom:.75rem;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.authors-scroll::-webkit-scrollbar{height:4px}
+.authors-scroll::-webkit-scrollbar-track{background:var(--parchment);border-radius:2px}
+.authors-scroll::-webkit-scrollbar-thumb{background:var(--gold);border-radius:2px}
+.author-card{scroll-snap-align:start;background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;flex:0 0 200px;box-shadow:0 2px 12px var(--shadow)}
+.author-card-icon{font-size:2rem;margin-bottom:.5rem}
+.author-card-name{font-family:'Playfair Display',serif;font-weight:700;font-size:.95rem}
+.author-card-meta{font-size:.7rem;color:var(--muted);margin-top:.25rem}
+.author-card-bio{font-size:.75rem;color:var(--ink);margin-top:.5rem;line-height:1.4}
+
 /* ─── ADMIN REVIEWS TABLE ─────────── */
 .review-admin-card{background:var(--card-bg);border-radius:8px;padding:1rem 1.2rem;margin-bottom:.75rem;box-shadow:0 1px 6px var(--shadow);display:flex;align-items:flex-start;gap:1rem}
 .review-admin-body{flex:1}
@@ -270,7 +289,7 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,16,8,.55);z-index:200;align-items:center;justify-content:center;padding:1rem}
 .modal-overlay.open{display:flex;animation:fadeIn .2s ease}
 .modal{background:var(--card-bg);border-radius:12px;padding:2rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal-wide{max-width:680px}
+.modal-wide{max-width:700px}
 .modal h2{font-family:'Playfair Display',serif;font-size:1.5rem;margin-bottom:1.5rem}
 .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--muted);transition:color .2s;line-height:1}
 .modal-close:hover{color:var(--rust)}
@@ -387,7 +406,8 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <div class="section-header">
         <div class="section-title">Наші <span>автори</span></div>
       </div>
-      <div id="homeAuthors" style="display:flex;gap:1rem;flex-wrap:wrap">
+      <!-- горизонтальний скрол для авторів -->
+      <div class="authors-scroll" id="homeAuthors">
         <div class="loading"><div class="spinner"></div></div>
       </div>
     </div>
@@ -573,6 +593,8 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <button class="admin-tab active" onclick="switchAdminTab('books')">📚 Книги</button>
       <button class="admin-tab" onclick="switchAdminTab('orders')">📦 Замовлення</button>
       <button class="admin-tab" onclick="switchAdminTab('reviews')">💬 Відгуки</button>
+      <button class="admin-tab" onclick="switchAdminTab('authors')">✍️ Автори</button>
+      <button class="admin-tab" onclick="switchAdminTab('categories')">🏷️ Категорії</button>
       <button class="admin-tab" onclick="switchAdminTab('add-book')">➕ Додати книгу</button>
     </div>
 
@@ -600,6 +622,68 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       </div>
     </div>
 
+    <!-- AUTHORS MANAGEMENT -->
+    <div id="adminAuthors" class="admin-section">
+      <div class="admin-card">
+        <h3>➕ Додати автора</h3>
+        <div class="add-book-form">
+          <div class="form-group">
+            <label class="form-label">Ім'я автора *</label>
+            <input type="text" class="form-input" id="aa-name" placeholder="Тарас Шевченко">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Країна</label>
+            <input type="text" class="form-input" id="aa-country" placeholder="Україна">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Рік народження</label>
+            <input type="number" class="form-input" id="aa-birth-year" placeholder="1814">
+          </div>
+          <div class="form-group">
+            <!-- placeholder for grid alignment -->
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Біографія</label>
+            <textarea class="form-input" id="aa-biography" rows="3" placeholder="Короткі відомості про автора..." style="resize:vertical"></textarea>
+          </div>
+          <div class="form-group full">
+            <button class="btn-primary" onclick="submitAddAuthor()" style="width:200px">Додати автора</button>
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>Список авторів</h3>
+        <div id="adminAuthorsTable"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES MANAGEMENT -->
+    <div id="adminCategories" class="admin-section">
+      <div class="admin-card">
+        <h3>➕ Додати категорію</h3>
+        <div class="add-book-form">
+          <div class="form-group">
+            <label class="form-label">Назва категорії *</label>
+            <input type="text" class="form-input" id="ac-name" placeholder="Поезія">
+          </div>
+          <div class="form-group">
+            <!-- placeholder -->
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Опис</label>
+            <textarea class="form-input" id="ac-description" rows="2" placeholder="Короткий опис категорії..." style="resize:vertical"></textarea>
+          </div>
+          <div class="form-group full">
+            <button class="btn-primary" onclick="submitAddCategory()" style="width:220px">Додати категорію</button>
+          </div>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>Список категорій</h3>
+        <div id="adminCategoriesTable"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
     <!-- ADD BOOK FORM -->
     <div id="adminAddBook" class="admin-section">
       <div class="admin-card">
@@ -611,7 +695,11 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
           </div>
           <div class="form-group">
             <label class="form-label">Автор *</label>
-            <input type="text" class="form-input" id="ab-author" placeholder="Ім'я автора">
+            <!-- select замість text input -->
+            <select class="form-select" id="ab-author-select">
+              <option value="">— оберіть автора —</option>
+            </select>
+            <input type="text" class="form-input" id="ab-author-manual" placeholder="або введіть вручну" style="margin-top:.4rem;font-size:.78rem">
           </div>
           <div class="form-group">
             <label class="form-label">Ціна (грн) *</label>
@@ -638,16 +726,17 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
             <input type="number" class="form-input" id="ab-purchase-price" placeholder="150">
           </div>
           <div class="form-group full">
+            <label class="form-label">Категорії книги</label>
+            <div class="cats-check-grid" id="ab-cats-grid">
+              <span style="color:var(--muted);font-size:.78rem">Завантаження...</span>
+            </div>
+          </div>
+          <div class="form-group full">
             <label class="form-label">Опис</label>
             <textarea class="form-input" id="ab-description" rows="4" placeholder="Короткий опис книги..." style="resize:vertical"></textarea>
           </div>
           <div class="form-group full">
             <label class="form-label">Обкладинка</label>
-            <!--
-              ВИПРАВЛЕННЯ: input type="file" не є частиною apiFetch.
-              submitAddBook використовує apiFormData (прямий fetch без Content-Type),
-              тому браузер сам встановлює multipart/form-data з коректним boundary.
-            -->
             <input type="file" class="form-input" id="ab-image" accept="image/*" onchange="previewImage(this,'ab-preview')">
             <img id="ab-preview" class="image-preview" style="display:none" alt="preview">
           </div>
@@ -657,6 +746,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
@@ -716,7 +806,10 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       </div>
       <div class="form-group">
         <label class="form-label">Автор</label>
-        <input type="text" class="form-input" id="eb-author">
+        <select class="form-select" id="eb-author-select">
+          <option value="">— оберіть автора —</option>
+        </select>
+        <input type="text" class="form-input" id="eb-author-manual" placeholder="або введіть вручну" style="margin-top:.4rem;font-size:.78rem">
       </div>
       <div class="form-group">
         <label class="form-label">Ціна (грн) *</label>
@@ -741,6 +834,12 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
       <div class="form-group">
         <label class="form-label">Закупівельна ціна</label>
         <input type="number" class="form-input" id="eb-purchase-price">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Категорії книги</label>
+        <div class="cats-check-grid" id="eb-cats-grid">
+          <span style="color:var(--muted);font-size:.78rem">Завантаження...</span>
+        </div>
       </div>
       <div class="form-group full">
         <label class="form-label">Опис</label>
@@ -838,6 +937,7 @@ let authToken = localStorage.getItem('readcity_token') || null;
 let authUser  = JSON.parse(localStorage.getItem('readcity_user') || 'null');
 let allBooks  = [];
 let allCategories = [];
+let allAuthors    = [];
 let selectedPayment = 'card';
 let selectedReviewStars = 0;
 
@@ -854,16 +954,9 @@ const bookImages = {
 
 // ════════════════════════════════════════════════════════
 //  HTTP HELPERS
-//
-//  ВИПРАВЛЕННЯ: apiFetch НІКОЛИ не встановлює Content-Type
-//  для запитів з FormData. Натомість apiFormData викликає
-//  fetch напряму — без будь-якого Content-Type заголовку,
-//  що дозволяє браузеру самому встановити
-//  "multipart/form-data; boundary=..." з коректним boundary.
 // ════════════════════════════════════════════════════════
 async function apiFetch(path, opts = {}) {
   try {
-    // Не перезаписуємо Content-Type якщо він вже явно заданий
     const headers = {};
     if (!(opts.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
@@ -892,18 +985,9 @@ async function apiDelete(path) {
   return apiFetch(path, { method: 'DELETE' });
 }
 
-/**
- * ВИПРАВЛЕНА функція для multipart/form-data запитів.
- * НЕ встановлює Content-Type вручну — браузер робить це автоматично
- * разом з коректним boundary для multipart.
- * Раніше apiFetch міг перезаписати заголовок на 'application/json',
- * тепер apiFormData повністю ізольована від apiFetch.
- */
 async function apiFormData(method, path, formData) {
   try {
     const headers = {};
-    // ✅ ВАЖЛИВО: Content-Type НЕ встановлюємо — браузер сам додасть
-    // "multipart/form-data; boundary=----WebKitFormBoundary..."
     if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
     const r = await fetch(API + path, { method, headers, body: formData });
     return r.json();
@@ -1143,20 +1227,25 @@ async function loadHome() {
       `<label class="filter-option"><input type="checkbox" value="${c.category_id}" class="catCheck"> <span>${c.name}</span></label>`
     ).join('');
   }
+
+  const authors = await apiFetch('/authors');
+  allAuthors = authors || [];
+
   const base = await apiFetch('/books') || [];
   const detailed = await Promise.all(base.map(b => apiFetch('/books/' + b.book_id)));
   allBooks = detailed.map((d, i) => d && !d.error ? d : base[i]);
   renderBooksGrid('homeBooks', allBooks);
 
-  const authors = await apiFetch('/authors');
-  if (authors) {
-    document.getElementById('homeAuthors').innerHTML = authors.map(a => `
-      <div style="background:var(--card-bg);border-radius:8px;padding:1.2rem 1.5rem;flex:1;min-width:160px;max-width:200px;box-shadow:0 2px 12px var(--shadow)">
-        <div style="font-size:2rem;margin-bottom:.5rem">✍️</div>
-        <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:.95rem">${a.name}</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:.25rem">${a.birth_year} • ${a.country}</div>
-        <div style="font-size:.75rem;color:var(--ink);margin-top:.5rem;line-height:1.4">${(a.biography || '').substring(0, 60)}…</div>
+  if (allAuthors.length) {
+    document.getElementById('homeAuthors').innerHTML = allAuthors.map(a => `
+      <div class="author-card">
+        <div class="author-card-icon">✍️</div>
+        <div class="author-card-name">${a.name}</div>
+        <div class="author-card-meta">${a.birth_year ? a.birth_year + ' · ' : ''}${a.country || ''}</div>
+        <div class="author-card-bio">${(a.biography || '').substring(0, 80)}${(a.biography || '').length > 80 ? '…' : ''}</div>
       </div>`).join('');
+  } else {
+    document.getElementById('homeAuthors').innerHTML = '<p style="color:var(--muted);font-size:.85rem">Авторів поки немає.</p>';
   }
 }
 
@@ -1228,7 +1317,6 @@ function addDetailToCart(bookId, title, author, price) {
   addToCart({ book_id: bookId, title, author, price }, qty);
 }
 
-// ── Відображення форми / запрошення для відгуку ──
 function renderReviewAddSection(bookId) {
   const el = document.getElementById('reviewAddSection');
   if (!el) return;
@@ -1271,24 +1359,19 @@ function setInlineStar(val, bookId) {
 async function submitInlineReview(bookId) {
   const rating  = window._inlineReviewStars || 0;
   const comment = document.getElementById('inlineReviewText')?.value.trim();
-
   if (!rating) {
     const err = document.getElementById('inlineStarError');
     if (err) err.style.display = 'block';
     return;
   }
   if (!comment) { showToast('Напишіть текст відгуку', 'error'); return; }
-
   const result = await apiPost('/reviews', { book_id: bookId, rating, comment });
   if (!result || result.error) { showToast(result?.error || 'Помилка публікації', 'error'); return; }
-
   showToast('Відгук опубліковано! ✓');
-  // Скинути форму та перезавантажити відгуки
   renderReviewAddSection(bookId);
   loadReviews(bookId);
 }
 
-// ── Зоряний рейтинг у модальному вікні (резервний, якщо потрібен) ──
 function setReviewStar(val) {
   selectedReviewStars = val;
   document.querySelectorAll('#starsInput span').forEach(s => {
@@ -1303,10 +1386,8 @@ async function submitReview() {
   const comment = document.getElementById('reviewText').value.trim();
   if (!rating) { document.getElementById('starError').style.display = 'block'; return; }
   if (!comment) { showToast('Напишіть текст відгуку', 'error'); return; }
-
   const result = await apiPost('/reviews', { book_id: bookId, rating, comment });
   if (!result || result.error) { showToast(result?.error || 'Помилка публікації', 'error'); return; }
-
   showToast('Відгук опубліковано! ✓');
   closeModal('addReviewModal');
   loadReviews(bookId);
@@ -1330,13 +1411,18 @@ async function loadReviews(bookId) {
     </p>
     ${data.reviews.map(r => `
       <div class="review-card">
-        ${isAdmin ? `<button class="review-delete-btn" onclick="adminDeleteReview('${r.review_id}','${bookId}')" title="Видалити відгук">🗑️ Видалити</button>` : ''}
         <div class="review-header">
           <span class="review-name">${r.customer}</span>
           <span class="review-date">${r.date}</span>
         </div>
         <div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
         <div class="review-text">${r.comment}</div>
+        ${isAdmin ? `
+        <div class="review-footer">
+          <button class="review-delete-btn" onclick="adminDeleteReview('${r.review_id}','${bookId}')">
+            🗑️ Видалити відгук
+          </button>
+        </div>` : ''}
       </div>`).join('')}`;
 }
 
@@ -1614,22 +1700,71 @@ async function sendContactForm() {
 // ════════════════════════════════════════════════════════
 //  ADMIN PANEL
 // ════════════════════════════════════════════════════════
+const ADMIN_TAB_MAP = {
+  books: 'adminBooks', orders: 'adminOrders', reviews: 'adminReviews',
+  authors: 'adminAuthors', categories: 'adminCategories', 'add-book': 'adminAddBook'
+};
+const ADMIN_TAB_IDX = { books: 0, orders: 1, reviews: 2, authors: 3, categories: 4, 'add-book': 5 };
+
 function switchAdminTab(tab) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-  const map = { books: 'adminBooks', orders: 'adminOrders', reviews: 'adminReviews', 'add-book': 'adminAddBook' };
-  document.getElementById(map[tab])?.classList.add('active');
+  document.getElementById(ADMIN_TAB_MAP[tab])?.classList.add('active');
   const tabs = document.querySelectorAll('.admin-tab');
-  const idx  = { books: 0, orders: 1, reviews: 2, 'add-book': 3 };
-  if (idx[tab] !== undefined) tabs[idx[tab]]?.classList.add('active');
+  if (ADMIN_TAB_IDX[tab] !== undefined) tabs[ADMIN_TAB_IDX[tab]]?.classList.add('active');
 
-  if (tab === 'books')   loadAdminBooks();
-  if (tab === 'orders')  loadAdminOrders();
-  if (tab === 'reviews') loadAdminReviews();
+  if (tab === 'books')      loadAdminBooks();
+  if (tab === 'orders')     loadAdminOrders();
+  if (tab === 'reviews')    loadAdminReviews();
+  if (tab === 'authors')    loadAdminAuthors();
+  if (tab === 'categories') loadAdminCategories();
+  if (tab === 'add-book')   loadAddBookForm();
 }
 
 async function loadAdminPanel() {
+  // Завантажуємо список авторів та категорій для форм
+  await refreshAuthorsAndCats();
   loadAdminBooks();
+}
+
+// Оновлює кеш авторів та категорій, заповнює select у формах книг
+async function refreshAuthorsAndCats() {
+  const [authors, cats] = await Promise.all([
+    apiFetch('/authors'),
+    apiFetch('/categories')
+  ]);
+  allAuthors    = authors || [];
+  allCategories = cats    || [];
+  populateAuthorSelects();
+  populateCatGrids();
+}
+
+function populateAuthorSelects() {
+  const opts = '<option value="">— оберіть автора —</option>' +
+    allAuthors.map(a => `<option value="${a.author_id}">${a.name}</option>`).join('');
+  ['ab-author-select', 'eb-author-select'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+}
+
+function populateCatGrids(selectedIds = []) {
+  const html = allCategories.length
+    ? allCategories.map(c => `
+        <label>
+          <input type="checkbox" value="${c.category_id}" ${selectedIds.includes(c.category_id) ? 'checked' : ''}>
+          ${c.name}
+        </label>`).join('')
+    : '<span style="color:var(--muted);font-size:.78rem">Категорій немає. Додайте в розділі "Категорії".</span>';
+
+  ['ab-cats-grid', 'eb-cats-grid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function getCheckedCatIds(gridId) {
+  return [...document.querySelectorAll(`#${gridId} input[type=checkbox]:checked`)].map(c => c.value);
 }
 
 // ─── Admin: books ──────────────────────────────
@@ -1671,21 +1806,48 @@ async function loadAdminBooks() {
     </div>`;
 }
 
+async function loadAddBookForm() {
+  await refreshAuthorsAndCats();
+}
+
 // ─── Admin: open edit modal ────────────────────
 async function openEditBook(bookId) {
+  await refreshAuthorsAndCats();
   const book = await apiFetch('/books/' + bookId);
   if (!book || book.error) return showToast('Помилка завантаження книги', 'error');
 
-  document.getElementById('eb-id').value              = book.book_id;
-  document.getElementById('eb-title').value           = book.title || '';
-  document.getElementById('eb-author').value          = getAuthorName(book);
-  document.getElementById('eb-price').value           = book.price || '';
-  document.getElementById('eb-stock').value           = book.stock ?? 0;
-  document.getElementById('eb-isbn').value            = book.isbn || '';
-  document.getElementById('eb-year').value            = book.year || '';
-  document.getElementById('eb-pages').value           = book.pages || '';
-  document.getElementById('eb-purchase-price').value  = book.purchase_price || '';
-  document.getElementById('eb-description').value     = book.description || '';
+  document.getElementById('eb-id').value             = book.book_id;
+  document.getElementById('eb-title').value          = book.title || '';
+  document.getElementById('eb-price').value          = book.price || '';
+  document.getElementById('eb-stock').value          = book.stock ?? 0;
+  document.getElementById('eb-isbn').value           = book.isbn || '';
+  document.getElementById('eb-year').value           = book.year || '';
+  document.getElementById('eb-pages').value          = book.pages || '';
+  document.getElementById('eb-purchase-price').value = book.purchase_price || '';
+  document.getElementById('eb-description').value    = book.description || '';
+
+  // Автор — якщо є збіг у select, вибираємо; якщо ні — вручну
+  const authorName = getAuthorName(book);
+  const authorSel  = document.getElementById('eb-author-select');
+  const matchOpt   = [...authorSel.options].find(o => o.text === authorName);
+  if (matchOpt) {
+    authorSel.value = matchOpt.value;
+    document.getElementById('eb-author-manual').value = '';
+  } else {
+    authorSel.value = '';
+    document.getElementById('eb-author-manual').value = authorName;
+  }
+
+  // Категорії — відзначаємо поточні
+  const currentCatIds = (book.categories || []).map(c => c.category_id);
+  populateCatGrids(currentCatIds);
+  // Оновлюємо тільки eb-cats-grid
+  const ebGrid = document.getElementById('eb-cats-grid');
+  if (ebGrid) {
+    ebGrid.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.checked = currentCatIds.includes(cb.value);
+    });
+  }
 
   const curImg = document.getElementById('eb-current-img');
   const imgUrl = getBookImageUrl(book);
@@ -1701,7 +1863,18 @@ async function submitEditBook() {
   const id = document.getElementById('eb-id').value;
   const fd = new FormData();
   fd.append('title',          document.getElementById('eb-title').value.trim());
-  fd.append('author',         document.getElementById('eb-author').value.trim());
+
+  // Автор: пріоритет select, потім manual
+  const authorSelVal = document.getElementById('eb-author-select').value;
+  const authorManual = document.getElementById('eb-author-manual').value.trim();
+  if (authorSelVal) {
+    fd.append('author_id', authorSelVal);
+    const selText = document.getElementById('eb-author-select').selectedOptions[0]?.text || '';
+    fd.append('author', selText);
+  } else {
+    fd.append('author', authorManual);
+  }
+
   fd.append('price',          document.getElementById('eb-price').value);
   fd.append('stock',          document.getElementById('eb-stock').value);
   fd.append('isbn',           document.getElementById('eb-isbn').value);
@@ -1709,10 +1882,14 @@ async function submitEditBook() {
   fd.append('pages',          document.getElementById('eb-pages').value);
   fd.append('purchase_price', document.getElementById('eb-purchase-price').value);
   fd.append('description',    document.getElementById('eb-description').value);
+
+  // Категорії
+  const catIds = getCheckedCatIds('eb-cats-grid');
+  catIds.forEach(id => fd.append('category_ids[]', id));
+
   const imgFile = document.getElementById('eb-image').files[0];
   if (imgFile) fd.append('image', imgFile);
 
-  // ✅ apiFormData не встановлює Content-Type — браузер сам додає multipart/form-data
   const result = await apiFormData('PUT', '/books/' + id, fd);
   if (!result || result.error) { showToast(result?.error || 'Помилка збереження', 'error'); return; }
 
@@ -1735,7 +1912,17 @@ function confirmDeleteBook(bookId, title) {
 async function submitAddBook() {
   const fd = new FormData();
   fd.append('title',          document.getElementById('ab-title').value.trim());
-  fd.append('author',         document.getElementById('ab-author').value.trim());
+
+  const authorSelVal = document.getElementById('ab-author-select').value;
+  const authorManual = document.getElementById('ab-author-manual').value.trim();
+  if (authorSelVal) {
+    fd.append('author_id', authorSelVal);
+    const selText = document.getElementById('ab-author-select').selectedOptions[0]?.text || '';
+    fd.append('author', selText);
+  } else {
+    fd.append('author', authorManual);
+  }
+
   fd.append('price',          document.getElementById('ab-price').value);
   fd.append('stock',          document.getElementById('ab-stock').value || '0');
   fd.append('isbn',           document.getElementById('ab-isbn').value);
@@ -1743,20 +1930,26 @@ async function submitAddBook() {
   fd.append('pages',          document.getElementById('ab-pages').value);
   fd.append('purchase_price', document.getElementById('ab-purchase-price').value);
   fd.append('description',    document.getElementById('ab-description').value);
+
+  const catIds = getCheckedCatIds('ab-cats-grid');
+  catIds.forEach(id => fd.append('category_ids[]', id));
+
   const imgFile = document.getElementById('ab-image').files[0];
   if (imgFile) fd.append('image', imgFile);
 
-  // ✅ apiFormData не встановлює Content-Type — браузер сам додає multipart/form-data
   const result = await apiFormData('POST', '/books', fd);
   if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
 
   showToast(`Книгу "${result.title}" додано!`);
-  ['ab-title','ab-author','ab-price','ab-isbn','ab-year','ab-pages','ab-purchase-price','ab-description'].forEach(id => {
+  ['ab-title','ab-price','ab-isbn','ab-year','ab-pages','ab-purchase-price','ab-description'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('ab-stock').value  = '0';
-  document.getElementById('ab-image').value  = '';
+  document.getElementById('ab-stock').value          = '0';
+  document.getElementById('ab-author-select').value  = '';
+  document.getElementById('ab-author-manual').value  = '';
+  document.getElementById('ab-image').value          = '';
   document.getElementById('ab-preview').style.display = 'none';
+  document.querySelectorAll('#ab-cats-grid input[type=checkbox]').forEach(c => c.checked = false);
   allBooks = [];
 }
 
@@ -1846,6 +2039,118 @@ async function adminDeleteReviewFromPanel(reviewId) {
     if (!result || result.error) { showToast(result?.error || 'Помилка видалення', 'error'); return; }
     showToast('Відгук видалено');
     loadAdminReviews();
+  });
+}
+
+// ─── Admin: authors ────────────────────────────
+async function loadAdminAuthors() {
+  await refreshAuthorsAndCats();
+  const el = document.getElementById('adminAuthorsTable');
+  if (!allAuthors.length) {
+    el.innerHTML = '<p style="color:var(--muted);padding:1rem">Авторів поки немає.</p>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr>
+        <th>Ім'я</th><th>Рік нар.</th><th>Країна</th><th>Біографія</th><th>Дії</th>
+      </tr></thead>
+      <tbody>
+        ${allAuthors.map(a => `
+          <tr>
+            <td><strong>${a.name}</strong></td>
+            <td style="color:var(--muted)">${a.birth_year || '—'}</td>
+            <td style="color:var(--muted)">${a.country || '—'}</td>
+            <td style="font-size:.78rem;max-width:260px;color:var(--muted)">${(a.biography || '').substring(0,80)}${(a.biography||'').length>80?'…':''}</td>
+            <td>
+              <button class="btn-sm btn-delete" onclick="confirmDeleteAuthor('${a.author_id}','${(a.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+async function submitAddAuthor() {
+  const name      = document.getElementById('aa-name').value.trim();
+  const country   = document.getElementById('aa-country').value.trim();
+  const birthYear = document.getElementById('aa-birth-year').value;
+  const biography = document.getElementById('aa-biography').value.trim();
+
+  if (!name) { showToast("Введіть ім'я автора", 'error'); return; }
+
+  const result = await apiPost('/authors', { name, country, birth_year: birthYear ? Number(birthYear) : undefined, biography });
+  if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
+
+  showToast(`Автора "${name}" додано!`);
+  document.getElementById('aa-name').value       = '';
+  document.getElementById('aa-country').value    = '';
+  document.getElementById('aa-birth-year').value = '';
+  document.getElementById('aa-biography').value  = '';
+  await loadAdminAuthors();
+}
+
+async function confirmDeleteAuthor(authorId, name) {
+  showConfirm('Видалити автора?', `Видалити автора "${name}"? Книги автора залишаться.`, async () => {
+    const result = await apiDelete('/authors/' + authorId);
+    if (!result || result.error) { showToast(result?.error || 'Помилка видалення', 'error'); return; }
+    showToast(`Автора "${name}" видалено`);
+    await loadAdminAuthors();
+  });
+}
+
+// ─── Admin: categories ─────────────────────────
+async function loadAdminCategories() {
+  await refreshAuthorsAndCats();
+  const el = document.getElementById('adminCategoriesTable');
+  if (!allCategories.length) {
+    el.innerHTML = '<p style="color:var(--muted);padding:1rem">Категорій поки немає.</p>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr>
+        <th>Назва</th><th>Опис</th><th>Дії</th>
+      </tr></thead>
+      <tbody>
+        ${allCategories.map(c => `
+          <tr>
+            <td><strong>${c.name}</strong></td>
+            <td style="font-size:.78rem;color:var(--muted)">${c.description || '—'}</td>
+            <td>
+              <button class="btn-sm btn-delete" onclick="confirmDeleteCategory('${c.category_id}','${(c.name||'').replace(/'/g,"\\'")}')">🗑️ Видалити</button>
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+async function submitAddCategory() {
+  const name        = document.getElementById('ac-name').value.trim();
+  const description = document.getElementById('ac-description').value.trim();
+
+  if (!name) { showToast('Введіть назву категорії', 'error'); return; }
+
+  const result = await apiPost('/categories', { name, description });
+  if (!result || result.error) { showToast(result?.error || 'Помилка додавання', 'error'); return; }
+
+  showToast(`Категорію "${name}" додано!`);
+  document.getElementById('ac-name').value        = '';
+  document.getElementById('ac-description').value = '';
+  allCategories = [];
+  await loadAdminCategories();
+}
+
+async function confirmDeleteCategory(catId, name) {
+  showConfirm('Видалити категорію?', `Видалити категорію "${name}"?`, async () => {
+    const result = await apiDelete('/categories/' + catId);
+    if (!result || result.error) { showToast(result?.error || 'Помилка видалення', 'error'); return; }
+    showToast(`Категорію "${name}" видалено`);
+    allCategories = [];
+    await loadAdminCategories();
   });
 }
 
