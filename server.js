@@ -125,8 +125,8 @@ function emailBase(content) {
                 <p style="color:#a09080;font-size:11px;font-family:Arial,sans-serif;margin:4px 0 0;">© 2026 Читай-місто.</p>
             </td></tr>
         </table>
-    </td></tr>
-</table>
+    </tr></table>
+</tr>
 </body></html>`;
 }
 
@@ -384,7 +384,6 @@ app.get('/api/publishers/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── НОВІ: Додати / Редагувати / Видалити видавництво (admin) ───
 app.post('/api/publishers', authMiddleware, requireRole('admin'), async (req, res) => {
     try {
         const { name, contact, website, city } = req.body;
@@ -631,7 +630,6 @@ app.post('/api/books', authMiddleware, requireRole('admin'), upload.single('imag
             } catch { }
         }
 
-        // Видавництво
         if (body.publisher_id) {
             try {
                 doc.publisher_id = new ObjectId(body.publisher_id);
@@ -664,7 +662,6 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
             year: body.year ? Number(body.year) : existing.year,
             pages: body.pages ? Number(body.pages) : existing.pages,
             description: body.description !== undefined ? body.description : existing.description,
-            imageUrl: req.file ? req.file.path : (body.imageUrl || existing.imageUrl || ''),
             category_ids: categoryIds.length > 0 ? categoryIds : (existing.category_ids || []),
             updatedAt: new Date().toISOString()
         };
@@ -677,7 +674,6 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
             } catch { }
         }
 
-        // Видавництво
         if (body.publisher_id) {
             try {
                 update.publisher_id = new ObjectId(body.publisher_id);
@@ -686,6 +682,14 @@ app.put('/api/books/:id', authMiddleware, requireRole('admin'), upload.single('i
             update.publisher_id = null;
         } else {
             update.publisher_id = existing.publisher_id || null;
+        }
+
+        if (req.file) {
+            update.imageUrl = req.file.path;
+        } else if (body._removeImage === 'true') {
+            update.imageUrl = '';
+        } else {
+            update.imageUrl = existing.imageUrl || '';
         }
 
         await db.collection('books').updateOne({ _id: new ObjectId(req.params.id) }, { $set: update });
@@ -699,6 +703,25 @@ app.delete('/api/books/:id', authMiddleware, requireRole('admin'), async (req, r
         if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
         await db.collection('books').deleteOne({ _id: new ObjectId(req.params.id) });
         res.json({ message: 'Книгу видалено', book_id: req.params.id, title: book.title });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── НОВИЙ ENDPOINT: Видалення зображення книги ───
+app.delete('/api/books/:id/image', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const book = await db.collection('books').findOne({ _id: new ObjectId(req.params.id) });
+        if (!book) return res.status(404).json({ error: 'Книгу не знайдено' });
+
+        if (!book.imageUrl) {
+            return res.status(400).json({ error: 'У книги немає зображення для видалення' });
+        }
+
+        await db.collection('books').updateOne(
+            { _id: new ObjectId(req.params.id) },
+            { $set: { imageUrl: '', updatedAt: new Date().toISOString() } }
+        );
+
+        res.json({ message: 'Зображення книги видалено', book_id: req.params.id });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -831,6 +854,16 @@ app.patch('/api/orders/:id/status', authMiddleware, requireRole('admin'), async 
             { $set: { status, updatedAt: new Date().toISOString() } }
         );
         res.json({ message: 'Статус оновлено', order_id: req.params.id, status });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/orders/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+    try {
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
+        if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
+
+        await db.collection('orders').deleteOne({ _id: new ObjectId(req.params.id) });
+        res.json({ message: 'Замовлення видалено', order_id: req.params.id, order_number: order.order_number });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -972,7 +1005,6 @@ app.get('/api/inventory', authMiddleware, requireRole('admin'), async (req, res)
     catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── СТАТИСТИКА: повертає реальну кількість книг, авторів, категорій ─────
 app.get('/api/stats', async (req, res) => {
     try {
         const [totalBooks, totalAuthors, totalCategories, totalPublishers, totalCustomers, totalOrders, totalReviews] = await Promise.all([
