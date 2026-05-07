@@ -112,8 +112,24 @@ nav button:hover,nav button.active{color:var(--gold-light);background:rgba(200,1
 .book-detail{max-width:900px;margin:0 auto;padding:2.5rem 2rem}
 .back-btn{background:none;border:none;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.4rem;margin-bottom:2rem;transition:color .2s}
 .back-btn:hover{color:var(--gold)}
-.detail-layout{display:flex;gap:3rem;flex-wrap:wrap}
-.detail-cover{width:280px;flex-shrink:0;aspect-ratio:2/3;background:linear-gradient(135deg,var(--parchment) 0%,#c8b99a 100%);border-radius:8px;box-shadow:6px 6px 20px var(--shadow),-2px -2px 8px rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.detail-layout{display:flex;gap:3rem;flex-wrap:wrap;align-items:flex-start}
+
+/* ══ ВИПРАВЛЕННЯ: фіксована висота обкладинки, не розтягується ══ */
+.detail-cover{
+  width:280px;
+  height:420px;
+  flex-shrink:0;
+  align-self:flex-start;
+  background:linear-gradient(135deg,var(--parchment) 0%,#c8b99a 100%);
+  border-radius:8px;
+  box-shadow:6px 6px 20px var(--shadow),-2px -2px 8px rgba(255,255,255,.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+}
+
 .detail-cover img{width:100%;height:100%;object-fit:cover;border-radius:8px}
 .detail-cover-spine{position:absolute;left:0;top:0;bottom:0;width:8px;background:linear-gradient(to bottom,var(--gold),var(--rust));border-radius:8px 0 0 8px}
 .detail-cover-placeholder{display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:1.5rem;text-align:center}
@@ -340,7 +356,7 @@ footer{background:var(--ink);color:rgba(245,240,232,.55);padding:2.5rem 2rem 1.5
   .catalog-layout{flex-direction:column}
   .sidebar{width:100%;position:static}
   .detail-layout{flex-direction:column}
-  .detail-cover{width:100%;max-width:220px}
+  .detail-cover{width:100%;max-width:220px;height:330px}
   .contacts-grid{grid-template-columns:1fr}
   .add-book-form{grid-template-columns:1fr}
   .add-book-form .form-group.full{grid-column:1}
@@ -1196,7 +1212,7 @@ function bookCoverHTML(book, size) {
   if (size === 'detail') return `
     <div class="detail-cover" style="${imgUrl ? '' : 'background:linear-gradient(160deg,' + bg + 'ee,' + bg + '99)'}">
       <div class="detail-cover-spine"></div>
-      ${imgUrl ? `<img src="${imgUrl}" alt="${book.title}" style="width:100%;height:100%;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">` : ''}
+      ${imgUrl ? `<img src="${imgUrl}" alt="${book.title}" onerror="this.style.display='none'">` : ''}
       <div class="detail-cover-placeholder" style="${imgUrl ? 'display:none' : ''}">
         <div style="font-size:3rem">📖</div>
         <div style="font-family:'Playfair Display',serif;font-size:.85rem;color:rgba(255,255,255,.8);text-align:center">${book.title}</div>
@@ -1315,7 +1331,7 @@ async function openBook(id) {
   const st   = (s) => (s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
   document.getElementById('bookDetailContent').innerHTML = `
-    <button class="back-btn" onclick="history.back()">← Назад до каталогу</button>
+    <button class="back-btn" onclick="showPage('catalog')">← Назад до каталогу</button>
     <div class="detail-layout">
       ${bookCoverHTML(book, 'detail')}
       <div class="detail-info">

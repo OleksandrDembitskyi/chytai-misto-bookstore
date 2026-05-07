@@ -229,6 +229,7 @@ async function sendOrderEmails(order) {
 // ============================================
 //  AUTH ENDPOINTS
 // ============================================
+// Реєстрація користувача
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -255,7 +256,7 @@ app.post('/api/auth/register', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+// Вхід користувача
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
